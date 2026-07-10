@@ -103,7 +103,7 @@
         const SPRINT_DOUBLETAP_MS = 300;     // Max ms between taps to trigger sprint
         const SEASONS = ['Spring','Summer','Fall','Winter'];
         const DAYS_PER_SEASON = 7;
-        const STAMINA_MAX = 100;
+        const STAMINA_MAX = 200;
 
         const CROPS = {
             turnip:    { name:'Turnip',    emoji:'🥬', growDays:2, seasons:['Spring'],        sellPrice:30,  color:0xf5f5f5 },
@@ -115,7 +115,7 @@
         };
 
         let GS = {
-            day:1, season:0, money:0, stamina:STAMINA_MAX,
+            day:1, season:0, money:0, stamina:200,
             wood:10, stone:5,
             seeds:{ turnip:5, potato:0, tomato:0, corn:0, pumpkin:0, starfruit:0 },
             produce:{ turnip:0, potato:0, tomato:0, corn:0, pumpkin:0, starfruit:0 },
@@ -147,6 +147,8 @@
             const saved = localStorage.getItem('galaxyFarmSave');
             if (saved) {
                 Object.assign(GS, JSON.parse(saved));
+                // Ensure stamina is within new max (handles old saves)
+                if (GS.stamina > STAMINA_MAX) GS.stamina = STAMINA_MAX;
                 if (GS.cropData) GS.cropData.forEach(cd => {
                     const planet = planets[cd.planetIdx];
                     if (!planet) return;
@@ -266,20 +268,21 @@
             return { position: n.clone().multiplyScalar(planet.userData.radius).add(planet.position), normal: n, gridKey };
         }
 
-        // Creates visible grid wireframe just below surface for debug/visual reference
+        // Creates grid wireframe ABOVE the surface (just barely) so it's only
+        // visible on the near side of the planet (depth tested against planet mesh).
         function createPlanetGrid(planet) {
             const r = planet.userData.radius;
             const step = GRID_CELL / r;
             const points = [];
 
-            // Latitude lines
+            // Latitude lines — sit 0.02 ABOVE surface so planet occludes far side
             for (let theta = step; theta < Math.PI; theta += step) {
                 for (let phi = 0; phi < Math.PI * 2; phi += step * 0.5) {
                     const n1 = new THREE.Vector3(Math.sin(theta)*Math.cos(phi), Math.cos(theta), Math.sin(theta)*Math.sin(phi));
                     const phi2 = phi + step * 0.5;
                     const n2 = new THREE.Vector3(Math.sin(theta)*Math.cos(phi2), Math.cos(theta), Math.sin(theta)*Math.sin(phi2));
-                    points.push(n1.multiplyScalar(r - 0.05).add(planet.position));
-                    points.push(n2.multiplyScalar(r - 0.05).add(planet.position));
+                    points.push(n1.clone().multiplyScalar(r + 0.02).add(planet.position));
+                    points.push(n2.clone().multiplyScalar(r + 0.02).add(planet.position));
                 }
             }
             // Longitude lines
@@ -288,14 +291,21 @@
                     const n1 = new THREE.Vector3(Math.sin(theta)*Math.cos(phi), Math.cos(theta), Math.sin(theta)*Math.sin(phi));
                     const theta2 = theta + step * 0.5;
                     const n2 = new THREE.Vector3(Math.sin(theta2)*Math.cos(phi), Math.cos(theta2), Math.sin(theta2)*Math.sin(phi));
-                    points.push(n1.multiplyScalar(r - 0.05).add(planet.position));
-                    points.push(n2.multiplyScalar(r - 0.05).add(planet.position));
+                    points.push(n1.clone().multiplyScalar(r + 0.02).add(planet.position));
+                    points.push(n2.clone().multiplyScalar(r + 0.02).add(planet.position));
                 }
             }
 
             const geo = new THREE.BufferGeometry().setFromPoints(points);
-            const mat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06 });
+            const mat = new THREE.LineBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.07,
+                depthTest: true,   // Planet mesh hides far-side lines
+                depthWrite: false  // Don't interfere with other rendering
+            });
             const grid = new THREE.LineSegments(geo, mat);
+            grid.renderOrder = 1; // Render after planet
             scene.add(grid);
             planet.userData.gridMesh = grid;
             return grid;
@@ -386,18 +396,22 @@
         shippingBin.position.copy(binN.clone().multiplyScalar(p1.userData.radius).add(p1.position));
         shippingBin.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),binN);
         shippingBin.translateY(0.5); shippingBin.userData={type:'shippingBin',planet:p1};
+        shippingBin.traverse(child => { child.userData.parentType = 'shippingBin'; });
         scene.add(shippingBin); interactables.push(shippingBin);
 
         // Bed
         const bed = new THREE.Group();
-        bed.add(new THREE.Mesh(new THREE.BoxGeometry(1.2,0.4,2.0),new THREE.MeshToonMaterial({color:0x5d4037})));
+        const bedFrame = new THREE.Mesh(new THREE.BoxGeometry(1.2,0.4,2.0),new THREE.MeshToonMaterial({color:0x5d4037}));
+        bed.add(bedFrame);
         const blanket=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.25,1.6),new THREE.MeshToonMaterial({color:0x7986cb}));blanket.position.set(0,0.3,-0.15);bed.add(blanket);
         const pillow=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.2,0.4),new THREE.MeshToonMaterial({color:0xffffff}));pillow.position.set(0,0.35,0.7);bed.add(pillow);
-        addOutline(bed.children[0],0.06);
+        addOutline(bedFrame,0.06);
         const bedN=new THREE.Vector3(-0.4,0.9,-0.2).normalize();
         bed.position.copy(bedN.clone().multiplyScalar(p1.userData.radius).add(p1.position));
         bed.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),bedN);
         bed.translateY(0.2); bed.userData={type:'bed',planet:p1};
+        // Tag all children so resolveObj can find the bed type
+        bed.traverse(child => { child.userData.parentType = 'bed'; });
         scene.add(bed); interactables.push(bed);
 
         // ============================================================
@@ -521,7 +535,15 @@
             // Find the interactable parent with userData.type
             function resolveObj(hit) {
                 let o = hit.object;
-                while(o && !o.userData.type && o.parent && o.parent !== scene) o = o.parent;
+                // Walk up the hierarchy to find the group with a type
+                while(o && !o.userData.type && o.parent && o.parent !== scene) {
+                    o = o.parent;
+                }
+                // If still no type found but has parentType, walk up further
+                if (!o.userData.type && o.userData.parentType) {
+                    // This means we hit an outline child — keep walking
+                    while(o && !o.userData.type && o.parent) o = o.parent;
+                }
                 return o;
             }
 
@@ -541,7 +563,7 @@
 
                 // HAMMER destroys anything
                 if (window.activeTool === 'hammer') {
-                    if(!useStamina(5)) return;
+                    if(!useStamina(3)) return;
                     if(type==='prop') obj.userData.resource==='wood'?GS.wood++:GS.stone++;
                     if(type==='fence') GS.wood++;
                     if(type==='crop'){const ci=cropMeshes.indexOf(obj);if(ci>-1)cropMeshes.splice(ci,1);}
@@ -572,13 +594,13 @@
                 // WATER on crop
                 if (window.activeTool === 'water' && type === 'crop') {
                     if(obj.userData.watered){showToast("Already watered!");return;}
-                    if(!useStamina(3))return;
+                    if(!useStamina(2))return;
                     obj.userData.watered=true; updateCropVisual(obj); playSFX('water'); return;
                 }
 
                 // WATER on mound (water before planting is ok — just darkens soil)
                 if (window.activeTool === 'water' && type === 'mound') {
-                    if(!useStamina(3))return;
+                    if(!useStamina(2))return;
                     if(obj.children[0]) obj.children[0].material.color.setHex(0x5d4037);
                     playSFX('water'); return;
                 }
@@ -608,7 +630,7 @@
                 if(planet.userData.occupiedCells.has(snapped.gridKey)) return;
 
                 if(window.activeTool === 'plow') {
-                    if(!useStamina(4)) return;
+                    if(!useStamina(3)) return;
                     planet.userData.occupiedCells.add(snapped.gridKey);
                     const soil = new THREE.Group();
                     const mound = new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.8,0.15,12),new THREE.MeshToonMaterial({color:0x8d6e63}));
