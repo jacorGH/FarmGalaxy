@@ -95,7 +95,7 @@
         // ============================================================
         // CONSTANTS & STATE
         // ============================================================
-        const GRID_CELL = 1.8;               // Arc-length grid size (consistent across all planets)
+        const GRID_CELL = 1.6;               // Arc-length spacing — mounds (dia ~1.5) will slightly touch
         const INTERACT_DIST = 6;
         const FENCE_LEN = 2.0;
         const WALK_SPEED = 0.12;
@@ -268,48 +268,8 @@
             return { position: n.clone().multiplyScalar(planet.userData.radius).add(planet.position), normal: n, gridKey };
         }
 
-        // Creates grid wireframe ABOVE the surface (just barely) so it's only
-        // visible on the near side of the planet (depth tested against planet mesh).
-        function createPlanetGrid(planet) {
-            const r = planet.userData.radius;
-            const step = GRID_CELL / r;
-            const points = [];
-
-            // Latitude lines — sit 0.02 ABOVE surface so planet occludes far side
-            for (let theta = step; theta < Math.PI; theta += step) {
-                for (let phi = 0; phi < Math.PI * 2; phi += step * 0.5) {
-                    const n1 = new THREE.Vector3(Math.sin(theta)*Math.cos(phi), Math.cos(theta), Math.sin(theta)*Math.sin(phi));
-                    const phi2 = phi + step * 0.5;
-                    const n2 = new THREE.Vector3(Math.sin(theta)*Math.cos(phi2), Math.cos(theta), Math.sin(theta)*Math.sin(phi2));
-                    points.push(n1.clone().multiplyScalar(r + 0.02).add(planet.position));
-                    points.push(n2.clone().multiplyScalar(r + 0.02).add(planet.position));
-                }
-            }
-            // Longitude lines
-            for (let phi = 0; phi < Math.PI * 2; phi += step) {
-                for (let theta = step; theta < Math.PI - step * 0.5; theta += step * 0.5) {
-                    const n1 = new THREE.Vector3(Math.sin(theta)*Math.cos(phi), Math.cos(theta), Math.sin(theta)*Math.sin(phi));
-                    const theta2 = theta + step * 0.5;
-                    const n2 = new THREE.Vector3(Math.sin(theta2)*Math.cos(phi), Math.cos(theta2), Math.sin(theta2)*Math.sin(phi));
-                    points.push(n1.clone().multiplyScalar(r + 0.02).add(planet.position));
-                    points.push(n2.clone().multiplyScalar(r + 0.02).add(planet.position));
-                }
-            }
-
-            const geo = new THREE.BufferGeometry().setFromPoints(points);
-            const mat = new THREE.LineBasicMaterial({
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.07,
-                depthTest: true,   // Planet mesh hides far-side lines
-                depthWrite: false  // Don't interfere with other rendering
-            });
-            const grid = new THREE.LineSegments(geo, mat);
-            grid.renderOrder = 1; // Render after planet
-            scene.add(grid);
-            planet.userData.gridMesh = grid;
-            return grid;
-        }
+        // Grid is invisible — no wireframe rendered. Snapping logic still
+        // keeps placements uniform. Mounds at 1.6 spacing = slightly touching.
 
         function addOutline(mesh, thickness=0.1) {
             const o = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({color:0x000000,side:THREE.BackSide}));
@@ -357,9 +317,6 @@
             p.userData = { radius, name, type:'planet', occupiedCells: new Set() };
             p.receiveShadow = true;
             scene.add(p); planets.push(p); addOutline(p,0.02);
-
-            // Create sub-surface grid
-            createPlanetGrid(p);
 
             // Props
             for(let i=0;i<deco;i++) {
@@ -442,8 +399,28 @@
             document.getElementById('status').innerText=labels[t]||t; document.getElementById('tool-list').classList.remove('open');
         };
 
-        // Keyboard
-        addEventListener('keydown',e=>{controls.keys[e.code]=true; if(e.code==='ShiftLeft'||e.code==='ShiftRight') isSprinting=true;});
+        // Keyboard — with tool hotkeys
+        addEventListener('keydown',e=>{
+            controls.keys[e.code]=true;
+            if(e.code==='ShiftLeft'||e.code==='ShiftRight') isSprinting=true;
+            // Tool hotkeys: 1-5 or Q/E to cycle
+            if(e.code==='Digit1') window.selectTool('plow');
+            if(e.code==='Digit2') window.selectTool('water');
+            if(e.code==='Digit3') window.selectTool('seed');
+            if(e.code==='Digit4') window.selectTool('hammer');
+            if(e.code==='Digit5') window.selectTool('fence');
+            // Q/E cycle through tools
+            if(e.code==='KeyQ'||e.code==='KeyE') {
+                const tools=['plow','water','seed','hammer','fence'];
+                const cur=tools.indexOf(window.activeTool);
+                const next=e.code==='KeyE'?(cur+1)%tools.length:(cur-1+tools.length)%tools.length;
+                window.selectTool(tools[next]);
+            }
+            // F to interact with what's in front (same as click at center)
+            if(e.code==='KeyF') handleInteraction(innerWidth/2, innerHeight/2);
+            // B for bed (sleep shortcut)
+            if(e.code==='KeyB') sleepTransition();
+        });
         addEventListener('keyup',e=>{controls.keys[e.code]=false; if(e.code==='ShiftLeft'||e.code==='ShiftRight') isSprinting=false;});
         addEventListener('wheel',e=>camZoom=Math.max(8,Math.min(45,camZoom+e.deltaY*0.02)));
 
