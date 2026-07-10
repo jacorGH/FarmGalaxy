@@ -6,76 +6,49 @@
     <title>Galaxy Farm - Cutesy Nebula</title>
     <style>
         body { margin: 0; overflow: hidden; background: #05010a; touch-action: none; font-family: 'Segoe UI', sans-serif; user-select: none; -webkit-user-select: none; }
-        
-        /* UI OVERLAY */
         #start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
         #start-btn { padding: 15px 40px; font-size: 24px; background: #ff4081; border: none; border-radius: 50px; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(255, 64, 129, 0.6); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-
+        @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.05)} 100%{transform:scale(1)} }
         #hud { position: absolute; top: 85px; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 100; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
         #inventory { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 10px 15px; border-radius: 12px; color: white; border: 1px solid rgba(255,255,255,0.2); font-size: 13px; font-weight: bold; pointer-events: none; line-height: 1.6; }
         #planet-name { font-size: 16px; font-weight: 900; letter-spacing: 1px; display: block; margin-bottom: 3px; background: rgba(0,0,0,0.6); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); }
         #day-hud { font-size: 12px; display: block; opacity: 0.8; margin-bottom: 2px; }
-        
-        /* STAMINA BAR */
         #stamina-bar { position: absolute; bottom: 150px; left: 20px; width: 120px; height: 14px; background: rgba(0,0,0,0.6); border-radius: 7px; border: 1px solid rgba(255,255,255,0.3); overflow: hidden; z-index: 100; pointer-events: none; }
         #stamina-fill { height: 100%; background: linear-gradient(90deg, #ff9800, #ffeb3b); border-radius: 7px; transition: width 0.3s; }
         #stamina-label { position: absolute; bottom: 166px; left: 20px; font-size: 11px; color: white; opacity: 0.7; pointer-events: none; z-index: 100; }
-
-        /* ARCHED CELESTIAL HUD */
         #cycle-container { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 240px; height: 60px; z-index: 101; pointer-events: none; }
         .hud-dot { position: absolute; background: rgba(255,255,255,0.4); border-radius: 50%; }
-        #celestial-icon { position: absolute; font-size: 24px; transition: transform 0.1s linear; filter: drop-shadow(0 0 8px orange); margin-left: -12px; margin-top: -12px; }
-
-        /* CONTROLS */
+        #celestial-icon { position: absolute; font-size: 24px; filter: drop-shadow(0 0 8px orange); margin-left: -12px; margin-top: -12px; }
         .joystick-base { position: absolute; width: 100px; height: 100px; background: rgba(255,255,255,0.08); border-radius: 50%; display: none; border: 2px solid rgba(255,255,255,0.25); z-index: 51; pointer-events: none; }
         .joystick-knob { position: absolute; width: 40px; height: 40px; background: rgba(255,255,255,0.7); border-radius: 50%; left: 30px; top: 30px; opacity: 0.6; }
-        
-        #jump-btn { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; background: rgba(255, 255, 255, 0.15); border: 4px solid white; border-radius: 50%; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 90; backdrop-filter: blur(4px); cursor: pointer; user-select: none; }
-
+        #jump-btn { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; background: rgba(255,255,255,0.15); border: 4px solid white; border-radius: 50%; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 90; backdrop-filter: blur(4px); cursor: pointer; }
+        #sprint-indicator { position: absolute; bottom: 168px; left: 25px; font-size: 10px; color: #ffeb3b; opacity: 0; pointer-events: none; z-index: 100; transition: opacity 0.2s; font-weight: bold; }
+        #sprint-indicator.active { opacity: 1; }
         #tool-toggle { position: absolute; top: 20px; right: 20px; width: 60px; height: 60px; background: #fff; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 28px; z-index: 110; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ddd; cursor: pointer; }
         #tool-list { position: absolute; top: 90px; right: 25px; display: flex; flex-direction: column; gap: 12px; z-index: 109; transition: 0.3s; opacity: 0; transform: translateY(-20px); pointer-events: none; }
         #tool-list.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
         .tool { width: 50px; height: 50px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 22px; background: rgba(0,0,0,0.8); color: white; cursor: pointer; }
         .tool.active { background: #fff; color: #000; transform: scale(1.1); }
-        
         #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; border: 2px solid rgba(255,255,255,0.8); border-radius: 50%; pointer-events: none; z-index: 100; display: none; }
-
         .baaa-bubble { position: absolute; background: black; color: white; padding: 4px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; pointer-events: none; border: 2px solid white; transition: opacity 0.5s; z-index: 95; }
-
-        /* SLEEP / DAY TRANSITION OVERLAY */
         #sleep-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 400; display: none; align-items: center; justify-content: center; flex-direction: column; color: white; font-size: 20px; opacity: 0; transition: opacity 0.8s; }
         #sleep-overlay.active { display: flex; opacity: 1; }
-        #sleep-overlay .sleep-text { animation: fadeInOut 2s ease-in-out; }
-        @keyframes fadeInOut { 0% { opacity:0; } 30% { opacity:1; } 70% { opacity:1; } 100% { opacity:0; } }
-
-        /* NOTIFICATION TOAST */
         #toast { position: absolute; top: 130px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #ffeb3b; padding: 8px 18px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; border: 1px solid rgba(255,235,59,0.4); }
         #toast.show { opacity: 1; }
     </style>
 </head>
 <body>
-    <div id="start-screen">
-        <h1>🌌 Galaxy Farm</h1>
-        <button id="start-btn" onclick="startGame()">TAP TO START</button>
-        <p style="margin-top:15px; opacity: 0.7; font-size: 14px;">Mobile: Sticks Bottom Corners • Tap to Interact</p>
-    </div>
-
-    <div id="sleep-overlay"><div class="sleep-text">💤 Sleeping...</div></div>
+    <div id="start-screen"><h1>🌌 Galaxy Farm</h1><button id="start-btn" onclick="startGame()">TAP TO START</button><p style="margin-top:15px;opacity:0.7;font-size:14px">Mobile: Sticks Bottom • Double-tap stick to sprint</p></div>
+    <div id="sleep-overlay"><div>💤 Sleeping...</div></div>
     <div id="toast"></div>
-
     <div id="cycle-container"><div id="celestial-icon">☀️</div></div>
     <div id="inventory"></div>
-    <div id="hud">
-        <span id="day-hud">Day 1 • Spring</span>
-        <span id="planet-name">HOME GREEN</span>
-        <div id="status">🚜 PLOW</div>
-    </div>
+    <div id="hud"><span id="day-hud">Day 1 • Spring</span><span id="planet-name">HOME GREEN</span><div id="status">🚜 PLOW</div></div>
     <div id="crosshair"></div>
     <div id="stamina-label">⚡ Stamina</div>
     <div id="stamina-bar"><div id="stamina-fill" style="width:100%"></div></div>
+    <div id="sprint-indicator">🏃 SPRINT</div>
     <div id="jump-btn">JUMP</div>
-
     <div id="tool-toggle" onclick="toggleTools()">🎒</div>
     <div id="tool-list">
         <div class="tool active" id="tool-plow" onclick="selectTool('plow')">🚜</div>
@@ -84,1098 +57,678 @@
         <div class="tool" id="tool-hammer" onclick="selectTool('hammer')">🔨</div>
         <div class="tool" id="tool-fence" onclick="selectTool('fence')">🚧</div>
     </div>
-
     <div id="joy-L-base" class="joystick-base"><div id="joy-L-knob" class="joystick-knob"></div></div>
     <div id="joy-R-base" class="joystick-base"><div id="joy-R-knob" class="joystick-knob"></div></div>
-    
-    <script type="importmap"> { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } } </script>
+    <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
     <script type="module">
         import * as THREE from 'three';
 
         // ============================================================
-        // AUDIO SYSTEM
+        // AUDIO
         // ============================================================
-        let audioCtx = null;
-        let nextNoteTime = 0, noteIndex = 0;
+        let audioCtx = null, nextNoteTime = 0, noteIndex = 0;
         const melody = [261.63, 293.66, 329.63, 392.00, 440.00, 392.00];
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
         window.startGame = () => {
             document.getElementById('start-screen').style.display = 'none';
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            nextNoteTime = audioCtx.currentTime;
-            scheduleAudio();
+            nextNoteTime = audioCtx.currentTime; scheduleAudio();
             if (!isMobile) renderer.domElement.requestPointerLock();
             loadGame();
         };
-
-        function scheduleAudio() {
-            if (!audioCtx) return;
-            while (nextNoteTime < audioCtx.currentTime + 0.1) {
-                playNote(melody[noteIndex % melody.length], nextNoteTime);
-                noteIndex++; nextNoteTime += 0.6;
-            }
-            requestAnimationFrame(scheduleAudio);
-        }
-
-        function playNote(freq, time) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine'; osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(0.015, time + 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(time); osc.stop(time + 0.5);
-        }
-
+        function scheduleAudio() { if (!audioCtx) return; while (nextNoteTime < audioCtx.currentTime + 0.1) { playNote(melody[noteIndex % melody.length], nextNoteTime); noteIndex++; nextNoteTime += 0.6; } requestAnimationFrame(scheduleAudio); }
+        function playNote(freq, time) { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type='sine'; o.frequency.value=freq; g.gain.setValueAtTime(0,time); g.gain.linearRampToValueAtTime(0.015,time+0.05); g.gain.exponentialRampToValueAtTime(0.001,time+0.4); o.connect(g); g.connect(audioCtx.destination); o.start(time); o.stop(time+0.5); }
         function playSFX(type) {
-            if (!audioCtx) return;
-            const t = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            if (type === 'jump') { osc.frequency.setValueAtTime(150, t); osc.frequency.linearRampToValueAtTime(300, t + 0.1); gain.gain.setValueAtTime(0.1, t); }
-            else if (type === 'pop') { osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.1); gain.gain.setValueAtTime(0.1, t); }
-            else if (type === 'thud') { osc.type = 'square'; osc.frequency.setValueAtTime(100, t); osc.frequency.exponentialRampToValueAtTime(50, t + 0.1); gain.gain.setValueAtTime(0.1, t); }
-            else if (type === 'baaa') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(150, t + 0.3); gain.gain.setValueAtTime(0.05, t); }
-            else if (type === 'water') { osc.type = 'sine'; osc.frequency.setValueAtTime(600, t); osc.frequency.linearRampToValueAtTime(300, t + 0.2); gain.gain.setValueAtTime(0.08, t); }
-            else if (type === 'harvest') { osc.frequency.setValueAtTime(500, t); osc.frequency.linearRampToValueAtTime(800, t + 0.15); gain.gain.setValueAtTime(0.12, t); }
-            else if (type === 'coin') { osc.frequency.setValueAtTime(800, t); osc.frequency.linearRampToValueAtTime(1200, t + 0.1); gain.gain.setValueAtTime(0.08, t); }
-            gain.gain.linearRampToValueAtTime(0, t + 0.2);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(t); osc.stop(t + 0.3);
+            if (!audioCtx) return; const t = audioCtx.currentTime, o = audioCtx.createOscillator(), g = audioCtx.createGain();
+            if (type==='jump'){o.frequency.setValueAtTime(150,t);o.frequency.linearRampToValueAtTime(300,t+0.1);g.gain.setValueAtTime(0.1,t);}
+            else if(type==='pop'){o.frequency.setValueAtTime(400,t);o.frequency.exponentialRampToValueAtTime(800,t+0.1);g.gain.setValueAtTime(0.1,t);}
+            else if(type==='thud'){o.type='square';o.frequency.setValueAtTime(100,t);o.frequency.exponentialRampToValueAtTime(50,t+0.1);g.gain.setValueAtTime(0.1,t);}
+            else if(type==='baaa'){o.type='sawtooth';o.frequency.setValueAtTime(200,t);o.frequency.linearRampToValueAtTime(150,t+0.3);g.gain.setValueAtTime(0.05,t);}
+            else if(type==='water'){o.frequency.setValueAtTime(600,t);o.frequency.linearRampToValueAtTime(300,t+0.2);g.gain.setValueAtTime(0.08,t);}
+            else if(type==='harvest'){o.frequency.setValueAtTime(500,t);o.frequency.linearRampToValueAtTime(800,t+0.15);g.gain.setValueAtTime(0.12,t);}
+            else if(type==='coin'){o.frequency.setValueAtTime(800,t);o.frequency.linearRampToValueAtTime(1200,t+0.1);g.gain.setValueAtTime(0.08,t);}
+            g.gain.linearRampToValueAtTime(0,t+0.2); o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t+0.3);
         }
 
         // ============================================================
-        // GAME STATE
+        // CONSTANTS & STATE
         // ============================================================
-        const GRID_CELL_SIZE = 1.8;
-        const INTERACT_DISTANCE_BASE = 6;
-        const FENCE_SEGMENT_LENGTH = 2.0;
-        const SEASONS = ['Spring', 'Summer', 'Fall', 'Winter'];
+        const GRID_CELL = 1.8;               // Arc-length grid size (consistent across all planets)
+        const INTERACT_DIST = 6;
+        const FENCE_LEN = 2.0;
+        const WALK_SPEED = 0.12;
+        const SPRINT_SPEED = 0.28;
+        const SPRINT_DOUBLETAP_MS = 300;     // Max ms between taps to trigger sprint
+        const SEASONS = ['Spring','Summer','Fall','Winter'];
         const DAYS_PER_SEASON = 7;
-        const DAY_LENGTH = 300; // seconds per in-game day (5 min)
         const STAMINA_MAX = 100;
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        // Crop definitions: { name, emoji, growDays, season[], sellPrice, color }
         const CROPS = {
-            turnip:    { name: 'Turnip',    emoji: '🥬', growDays: 2, seasons: ['Spring'],         sellPrice: 30,  color: 0xf5f5f5 },
-            potato:    { name: 'Potato',    emoji: '🥔', growDays: 3, seasons: ['Spring'],         sellPrice: 50,  color: 0xc9a96e },
-            tomato:    { name: 'Tomato',    emoji: '🍅', growDays: 3, seasons: ['Summer'],         sellPrice: 40,  color: 0xff4444 },
-            corn:      { name: 'Corn',      emoji: '🌽', growDays: 4, seasons: ['Summer'],         sellPrice: 60,  color: 0xffd700 },
-            pumpkin:   { name: 'Pumpkin',   emoji: '🎃', growDays: 5, seasons: ['Fall'],           sellPrice: 80,  color: 0xff8c00 },
-            starfruit: { name: 'Starfruit', emoji: '⭐', growDays: 6, seasons: ['Summer','Fall'],  sellPrice: 150, color: 0xffff00 }
+            turnip:    { name:'Turnip',    emoji:'🥬', growDays:2, seasons:['Spring'],        sellPrice:30,  color:0xf5f5f5 },
+            potato:    { name:'Potato',    emoji:'🥔', growDays:3, seasons:['Spring'],        sellPrice:50,  color:0xc9a96e },
+            tomato:    { name:'Tomato',    emoji:'🍅', growDays:3, seasons:['Summer'],        sellPrice:40,  color:0xff4444 },
+            corn:      { name:'Corn',      emoji:'🌽', growDays:4, seasons:['Summer'],        sellPrice:60,  color:0xffd700 },
+            pumpkin:   { name:'Pumpkin',   emoji:'🎃', growDays:5, seasons:['Fall'],          sellPrice:80,  color:0xff8c00 },
+            starfruit: { name:'Starfruit', emoji:'⭐', growDays:6, seasons:['Summer','Fall'], sellPrice:150, color:0xffff00 }
         };
 
-        // Game state object — saved/loaded from localStorage
         let GS = {
-            day: 1,
-            season: 0,           // index into SEASONS
-            money: 0,
-            stamina: STAMINA_MAX,
-            wood: 10,
-            stone: 5,
-            seeds: { turnip: 5, potato: 0, tomato: 0, corn: 0, pumpkin: 0, starfruit: 0 },
-            produce: { turnip: 0, potato: 0, tomato: 0, corn: 0, pumpkin: 0, starfruit: 0 },
-            shippingBin: [],      // items to sell overnight
-            selectedSeed: 'turnip',
-            // Per-planet crop data is stored on meshes at runtime; we serialize on save
-            cropData: []          // [{ planetIdx, gridKey, cropType, growthDay, watered }]
+            day:1, season:0, money:0, stamina:STAMINA_MAX,
+            wood:10, stone:5,
+            seeds:{ turnip:5, potato:0, tomato:0, corn:0, pumpkin:0, starfruit:0 },
+            produce:{ turnip:0, potato:0, tomato:0, corn:0, pumpkin:0, starfruit:0 },
+            shippingBin:[], selectedSeed:'turnip', cropData:[]
         };
 
-        let worldTime = 0, dayTimeElapsed = 0;
+        let worldTime = 0;
         window.activeTool = 'plow';
-        const planets = [], activeAnims = [], interactables = [], creatures = [], weeds = [], cropMeshes = [];
-        let camPitch = 0.2, camZoom = 18, initialPinchDist = null;
+        const planets=[], activeAnims=[], interactables=[], creatures=[], weeds=[], cropMeshes=[];
+        let camPitch=0.2, camZoom=18, initialPinchDist=null;
+        let isSprinting = false;
+        let lastLeftStickTap = 0; // for double-tap sprint on mobile
 
         // ============================================================
         // SAVE / LOAD
         // ============================================================
         function saveGame() {
-            // Serialize crop states from meshes
-            GS.cropData = [];
-            cropMeshes.forEach(cm => {
-                if (cm.userData.cropType) {
-                    GS.cropData.push({
-                        planetIdx: planets.indexOf(cm.userData.planet),
-                        gridKey: cm.userData.gridKey,
-                        cropType: cm.userData.cropType,
-                        growthDay: cm.userData.growthDay,
-                        watered: cm.userData.watered,
-                        stage: cm.userData.stage
-                    });
-                }
-            });
+            GS.cropData = cropMeshes.map(cm => ({
+                planetIdx: planets.indexOf(cm.userData.planet),
+                gridKey: cm.userData.gridKey,
+                cropType: cm.userData.cropType,
+                growthDay: cm.userData.growthDay,
+                watered: cm.userData.watered,
+                stage: cm.userData.stage
+            }));
             localStorage.setItem('galaxyFarmSave', JSON.stringify(GS));
         }
-
         function loadGame() {
             const saved = localStorage.getItem('galaxyFarmSave');
             if (saved) {
-                const data = JSON.parse(saved);
-                Object.assign(GS, data);
-                // Rebuild crops from saved data
-                if (GS.cropData && GS.cropData.length > 0) {
-                    GS.cropData.forEach(cd => {
-                        const planet = planets[cd.planetIdx];
-                        if (planet) {
-                            const snapped = snapToGridByKey(cd.gridKey, planet);
-                            if (snapped) {
-                                createCropMesh(planet, snapped, cd.cropType, cd.growthDay, cd.watered, cd.stage);
-                            }
-                        }
-                    });
-                }
+                Object.assign(GS, JSON.parse(saved));
+                if (GS.cropData) GS.cropData.forEach(cd => {
+                    const planet = planets[cd.planetIdx];
+                    if (!planet) return;
+                    const snapped = gridKeyToSnapped(cd.gridKey, planet);
+                    if (snapped) createCropMesh(planet, snapped, cd.cropType, cd.growthDay, cd.watered, cd.stage);
+                });
             }
             updateAllUI();
         }
-
-        // Auto-save every 30 seconds
-        setInterval(() => saveGame(), 30000);
+        setInterval(saveGame, 30000);
 
         // ============================================================
-        // DAY / SEASON / SLEEP SYSTEM
+        // DAY SYSTEM
         // ============================================================
         function advanceDay() {
-            // Process shipping bin
             let earnings = 0;
-            GS.shippingBin.forEach(item => {
-                const crop = CROPS[item];
-                if (crop) earnings += crop.sellPrice;
-            });
-            if (earnings > 0) {
-                GS.money += earnings;
-                showToast(`💰 Earned ${earnings} Star Coins!`);
-            }
+            GS.shippingBin.forEach(item => { if (CROPS[item]) earnings += CROPS[item].sellPrice; });
+            if (earnings > 0) { GS.money += earnings; showToast(`💰 Earned ${earnings} Star Coins!`); }
             GS.shippingBin = [];
-
-            // Advance day
             GS.day++;
-            if (GS.day > DAYS_PER_SEASON) {
-                GS.day = 1;
-                GS.season = (GS.season + 1) % 4;
-                showToast(`🌸 ${SEASONS[GS.season]} has arrived!`);
-            }
-
+            if (GS.day > DAYS_PER_SEASON) { GS.day = 1; GS.season = (GS.season + 1) % 4; showToast(`🌸 ${SEASONS[GS.season]} has arrived!`); }
             // Grow crops
             cropMeshes.forEach(cm => {
                 if (!cm.userData.cropType) return;
                 const def = CROPS[cm.userData.cropType];
                 if (cm.userData.watered && cm.userData.stage < 3) {
                     cm.userData.growthDay++;
-                    // Check if crop is in season
                     const inSeason = def.seasons.includes(SEASONS[GS.season]);
-                    if (inSeason && cm.userData.growthDay >= def.growDays) {
-                        cm.userData.stage = 3; // harvestable
-                    } else if (cm.userData.growthDay >= Math.ceil(def.growDays * 0.5)) {
-                        cm.userData.stage = Math.min(2, cm.userData.stage + 1);
-                    }
+                    if (inSeason && cm.userData.growthDay >= def.growDays) cm.userData.stage = 3;
+                    else if (cm.userData.growthDay >= Math.ceil(def.growDays * 0.5)) cm.userData.stage = Math.min(2, cm.userData.stage + 1);
                 }
-                cm.userData.watered = false; // reset watering
+                cm.userData.watered = false;
                 updateCropVisual(cm);
             });
-
-            // Restore stamina
             GS.stamina = STAMINA_MAX;
-            dayTimeElapsed = 0;
-            saveGame();
-            updateAllUI();
+            saveGame(); updateAllUI();
         }
-
         function sleepTransition() {
-            const overlay = document.getElementById('sleep-overlay');
-            overlay.classList.add('active');
-            setTimeout(() => {
-                advanceDay();
-                setTimeout(() => {
-                    overlay.classList.remove('active');
-                }, 1500);
-            }, 800);
+            const ov = document.getElementById('sleep-overlay');
+            ov.classList.add('active');
+            setTimeout(() => { advanceDay(); setTimeout(() => ov.classList.remove('active'), 1500); }, 800);
         }
 
         // ============================================================
-        // STAMINA
+        // STAMINA & UI
         // ============================================================
-        function useStamina(amount) {
-            if (GS.stamina < amount) {
-                showToast("😴 Too tired! Sleep to restore energy.");
-                return false;
-            }
-            GS.stamina -= amount;
-            updateStaminaBar();
-            return true;
-        }
-
-        function updateStaminaBar() {
-            const pct = (GS.stamina / STAMINA_MAX) * 100;
-            document.getElementById('stamina-fill').style.width = pct + '%';
-        }
-
-        // ============================================================
-        // UI UPDATES
-        // ============================================================
-        function updateAllUI() {
-            updateInventory();
-            updateStaminaBar();
-            updateDayHUD();
-        }
-
+        function useStamina(amt) { if (GS.stamina < amt) { showToast("😴 Too tired! Sleep to restore energy."); return false; } GS.stamina -= amt; updateStaminaBar(); return true; }
+        function updateStaminaBar() { document.getElementById('stamina-fill').style.width = (GS.stamina/STAMINA_MAX*100)+'%'; }
+        function updateAllUI() { updateInventory(); updateStaminaBar(); document.getElementById('day-hud').innerText = `Day ${GS.day} • ${SEASONS[GS.season]}`; }
         function updateInventory() {
-            let html = `⭐ ${GS.money} coins<br>🪓 ${GS.wood} 🪨 ${GS.stone}<br>`;
-            // Show seeds
-            const seedEntries = Object.entries(GS.seeds).filter(([k, v]) => v > 0);
-            if (seedEntries.length > 0) {
-                html += seedEntries.map(([k, v]) => `${CROPS[k].emoji}🌱${v}`).join(' ') + '<br>';
-            }
-            // Show produce
-            const prodEntries = Object.entries(GS.produce).filter(([k, v]) => v > 0);
-            if (prodEntries.length > 0) {
-                html += prodEntries.map(([k, v]) => `${CROPS[k].emoji}${v}`).join(' ');
-            }
-            document.getElementById('inventory').innerHTML = html;
+            let h = `⭐ ${GS.money}<br>🪓${GS.wood} 🪨${GS.stone}<br>`;
+            const se = Object.entries(GS.seeds).filter(([,v])=>v>0);
+            if (se.length) h += se.map(([k,v])=>`${CROPS[k].emoji}🌱${v}`).join(' ')+'<br>';
+            const pe = Object.entries(GS.produce).filter(([,v])=>v>0);
+            if (pe.length) h += pe.map(([k,v])=>`${CROPS[k].emoji}${v}`).join(' ');
+            document.getElementById('inventory').innerHTML = h;
         }
-
-        function updateDayHUD() {
-            document.getElementById('day-hud').innerText = `Day ${GS.day} • ${SEASONS[GS.season]}`;
-        }
-
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 2500);
-        }
+        function showToast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
         // ============================================================
-        // RENDERER & SCENE
+        // RENDERER
         // ============================================================
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        const camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.1, 5000);
+        const renderer = new THREE.WebGLRenderer({ antialias:true });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
+        addEventListener('resize', () => { camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // ============================================================
-        // GALAXY / SKYBOX
-        // ============================================================
-        function createCutesyNebula() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 1024; canvas.height = 1024;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#0a0215';
-            ctx.fillRect(0, 0, 1024, 1024);
-            const colors = ['rgba(255, 100, 200, 0.15)', 'rgba(150, 100, 255, 0.15)', 'rgba(50, 200, 255, 0.1)'];
-            for (let i = 0; i < 60; i++) {
-                const x = Math.random() * 1024, y = Math.random() * 1024;
-                const r = Math.random() * 300 + 100;
-                const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
-                grd.addColorStop(0, colors[Math.floor(Math.random() * colors.length)]);
-                grd.addColorStop(1, 'transparent');
-                ctx.fillStyle = grd;
-                ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-            }
-            return new THREE.CanvasTexture(canvas);
-        }
-
-        const nebGeo = new THREE.SphereGeometry(3000, 32, 32);
-        const nebMat = new THREE.MeshBasicMaterial({ map: createCutesyNebula(), side: THREE.BackSide });
-        scene.add(new THREE.Mesh(nebGeo, nebMat));
-
-        const celestialSun = new THREE.Mesh(new THREE.SphereGeometry(60, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffdd88 }));
-        const celestialMoon = new THREE.Mesh(new THREE.SphereGeometry(40, 16, 16), new THREE.MeshBasicMaterial({ color: 0xccccff }));
+        // Skybox
+        function createNebula() { const c=document.createElement('canvas'); c.width=c.height=1024; const x=c.getContext('2d'); x.fillStyle='#0a0215'; x.fillRect(0,0,1024,1024); const cols=['rgba(255,100,200,0.15)','rgba(150,100,255,0.15)','rgba(50,200,255,0.1)']; for(let i=0;i<60;i++){const px=Math.random()*1024,py=Math.random()*1024,r=Math.random()*300+100;const g=x.createRadialGradient(px,py,0,px,py,r);g.addColorStop(0,cols[i%3]);g.addColorStop(1,'transparent');x.fillStyle=g;x.beginPath();x.arc(px,py,r,0,Math.PI*2);x.fill();} return new THREE.CanvasTexture(c); }
+        scene.add(new THREE.Mesh(new THREE.SphereGeometry(3000,32,32), new THREE.MeshBasicMaterial({map:createNebula(),side:THREE.BackSide})));
+        const celestialSun = new THREE.Mesh(new THREE.SphereGeometry(60,16,16), new THREE.MeshBasicMaterial({color:0xffdd88}));
+        const celestialMoon = new THREE.Mesh(new THREE.SphereGeometry(40,16,16), new THREE.MeshBasicMaterial({color:0xccccff}));
         scene.add(celestialSun, celestialMoon);
-
-        const stars = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0xffffff, size: 2, transparent: true }));
-        const starPts = [];
-        for (let i = 0; i < 8000; i++) {
-            const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(1800 + Math.random() * 1000);
-            starPts.push(v.x, v.y, v.z);
-        }
-        stars.geometry.setAttribute('position', new THREE.Float32BufferAttribute(starPts, 3));
-        scene.add(stars);
-
-        const sunLight = new THREE.DirectionalLight(0xfff5ee, 1.3);
-        sunLight.castShadow = true;
-        const ambLight = new THREE.AmbientLight(0x404060, 0.4);
+        const stars = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({color:0xffffff,size:2,transparent:true}));
+        const sp=[]; for(let i=0;i<8000;i++){const v=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize().multiplyScalar(1800+Math.random()*1000);sp.push(v.x,v.y,v.z);}
+        stars.geometry.setAttribute('position',new THREE.Float32BufferAttribute(sp,3)); scene.add(stars);
+        const sunLight = new THREE.DirectionalLight(0xfff5ee,1.3); sunLight.castShadow=true;
+        const ambLight = new THREE.AmbientLight(0x404060,0.4);
         scene.add(sunLight, ambLight);
 
         // ============================================================
-        // UTILITY FUNCTIONS
+        // GRID SYSTEM — Sub-surface mesh for consistent tile placement
         // ============================================================
-        function addOutline(mesh, thickness = 0.1) {
-            const outline = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide }));
-            outline.scale.multiplyScalar(1 + thickness);
-            mesh.add(outline);
-            return outline;
-        }
+        // Each planet gets an invisible grid mesh that sits just below the surface.
+        // The grid is a wireframe of uniformly-sized quads projected onto the sphere.
+        // All placement (plow, seed, fence) snaps to the nearest grid cell center.
 
         function snapToGrid(worldPoint, planet) {
-            const radius = planet.userData.radius;
-            const center = planet.position;
-            const normal = worldPoint.clone().sub(center).normalize();
+            const r = planet.userData.radius;
+            const normal = worldPoint.clone().sub(planet.position).normalize();
             const phi = Math.atan2(normal.z, normal.x);
             const theta = Math.acos(Math.max(-1, Math.min(1, normal.y)));
-            const angularStep = GRID_CELL_SIZE / radius;
-            const snappedPhi = Math.round(phi / angularStep) * angularStep;
-            const snappedTheta = Math.round(theta / angularStep) * angularStep;
-            const snappedNormal = new THREE.Vector3(
-                Math.sin(snappedTheta) * Math.cos(snappedPhi),
-                Math.cos(snappedTheta),
-                Math.sin(snappedTheta) * Math.sin(snappedPhi)
+            const step = GRID_CELL / r;
+            const sPhi = Math.round(phi / step) * step;
+            const sTheta = Math.round(theta / step) * step;
+            // Clamp theta away from poles to avoid degenerate cells
+            const clampedTheta = Math.max(step, Math.min(Math.PI - step, sTheta));
+            const sNormal = new THREE.Vector3(
+                Math.sin(clampedTheta) * Math.cos(sPhi),
+                Math.cos(clampedTheta),
+                Math.sin(clampedTheta) * Math.sin(sPhi)
             ).normalize();
-            const snappedPos = snappedNormal.clone().multiplyScalar(radius).add(center);
-            const gridKey = `${Math.round(snappedPhi / angularStep)},${Math.round(snappedTheta / angularStep)}`;
-            return { position: snappedPos, normal: snappedNormal, gridKey };
+            const pos = sNormal.clone().multiplyScalar(r).add(planet.position);
+            const key = `${Math.round(sPhi/step)},${Math.round(clampedTheta/step)}`;
+            return { position: pos, normal: sNormal, gridKey: key };
         }
 
-        // Reconstruct grid position from key (for save/load)
-        function snapToGridByKey(gridKey, planet) {
-            const parts = gridKey.split(',').map(Number);
-            if (parts.length !== 2) return null;
-            const angularStep = GRID_CELL_SIZE / planet.userData.radius;
-            const phi = parts[0] * angularStep;
-            const theta = parts[1] * angularStep;
-            const normal = new THREE.Vector3(
-                Math.sin(theta) * Math.cos(phi),
-                Math.cos(theta),
-                Math.sin(theta) * Math.sin(phi)
-            ).normalize();
-            const pos = normal.clone().multiplyScalar(planet.userData.radius).add(planet.position);
-            return { position: pos, normal, gridKey };
+        function gridKeyToSnapped(gridKey, planet) {
+            const [a, b] = gridKey.split(',').map(Number);
+            const step = GRID_CELL / planet.userData.radius;
+            const phi = a * step, theta = b * step;
+            const n = new THREE.Vector3(Math.sin(theta)*Math.cos(phi), Math.cos(theta), Math.sin(theta)*Math.sin(phi)).normalize();
+            return { position: n.clone().multiplyScalar(planet.userData.radius).add(planet.position), normal: n, gridKey };
         }
 
-        function getInteractDistance(planet) {
-            return Math.min(INTERACT_DISTANCE_BASE, planet.userData.radius * 0.5);
+        // Creates visible grid wireframe just below surface for debug/visual reference
+        function createPlanetGrid(planet) {
+            const r = planet.userData.radius;
+            const step = GRID_CELL / r;
+            const points = [];
+
+            // Latitude lines
+            for (let theta = step; theta < Math.PI; theta += step) {
+                for (let phi = 0; phi < Math.PI * 2; phi += step * 0.5) {
+                    const n1 = new THREE.Vector3(Math.sin(theta)*Math.cos(phi), Math.cos(theta), Math.sin(theta)*Math.sin(phi));
+                    const phi2 = phi + step * 0.5;
+                    const n2 = new THREE.Vector3(Math.sin(theta)*Math.cos(phi2), Math.cos(theta), Math.sin(theta)*Math.sin(phi2));
+                    points.push(n1.multiplyScalar(r - 0.05).add(planet.position));
+                    points.push(n2.multiplyScalar(r - 0.05).add(planet.position));
+                }
+            }
+            // Longitude lines
+            for (let phi = 0; phi < Math.PI * 2; phi += step) {
+                for (let theta = step; theta < Math.PI - step * 0.5; theta += step * 0.5) {
+                    const n1 = new THREE.Vector3(Math.sin(theta)*Math.cos(phi), Math.cos(theta), Math.sin(theta)*Math.sin(phi));
+                    const theta2 = theta + step * 0.5;
+                    const n2 = new THREE.Vector3(Math.sin(theta2)*Math.cos(phi), Math.cos(theta2), Math.sin(theta2)*Math.sin(phi));
+                    points.push(n1.multiplyScalar(r - 0.05).add(planet.position));
+                    points.push(n2.multiplyScalar(r - 0.05).add(planet.position));
+                }
+            }
+
+            const geo = new THREE.BufferGeometry().setFromPoints(points);
+            const mat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06 });
+            const grid = new THREE.LineSegments(geo, mat);
+            scene.add(grid);
+            planet.userData.gridMesh = grid;
+            return grid;
         }
+
+        function addOutline(mesh, thickness=0.1) {
+            const o = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({color:0x000000,side:THREE.BackSide}));
+            o.scale.multiplyScalar(1+thickness); mesh.add(o); return o;
+        }
+        function getInteractDist(planet) { return Math.min(INTERACT_DIST, planet.userData.radius * 0.5); }
 
         // ============================================================
-        // CROP VISUAL SYSTEM
+        // CROP VISUALS
         // ============================================================
         function createCropMesh(planet, snapped, cropType, growthDay, watered, stage) {
             const def = CROPS[cropType];
-            const group = new THREE.Group();
-            group.position.copy(snapped.position);
-            group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), snapped.normal);
-            group.translateY(0.15);
-            
-            // Base mound (soil)
-            const soil = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.7, 0.8, 0.15, 12),
-                new THREE.MeshToonMaterial({ color: watered ? 0x5d4037 : 0x8d6e63 })
-            );
-            group.add(soil);
-            
-            // Crop visual based on stage
-            updateCropGroupVisual(group, def, stage);
-
-            group.userData = {
-                type: 'crop',
-                cropType,
-                growthDay: growthDay || 0,
-                watered: watered || false,
-                stage: stage || 0,
-                planet,
-                gridKey: snapped.gridKey
-            };
-            
-            scene.add(group);
-            interactables.push(group);
-            cropMeshes.push(group);
+            const grp = new THREE.Group();
+            grp.position.copy(snapped.position);
+            grp.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), snapped.normal);
+            grp.translateY(0.1);
+            // Soil base
+            const soil = new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.8,0.15,12), new THREE.MeshToonMaterial({color: watered ? 0x5d4037 : 0x8d6e63}));
+            grp.add(soil);
+            grp.userData = { type:'crop', cropType, growthDay:growthDay||0, watered:watered||false, stage:stage||0, planet, gridKey:snapped.gridKey };
+            buildCropStage(grp, def, stage||0);
+            scene.add(grp); interactables.push(grp); cropMeshes.push(grp);
             planet.userData.occupiedCells.add(snapped.gridKey);
-            return group;
+            return grp;
         }
-
-        function updateCropGroupVisual(group, def, stage) {
-            // Remove old crop part (keep soil at index 0)
-            while (group.children.length > 1) {
-                group.remove(group.children[group.children.length - 1]);
-            }
-            
-            if (stage === 0) {
-                // Seed — tiny dot
-                const seed = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), new THREE.MeshToonMaterial({ color: 0x4e342e }));
-                seed.position.y = 0.12;
-                group.add(seed);
-            } else if (stage === 1) {
-                // Sprout — small green shoot
-                const sprout = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.5, 6), new THREE.MeshToonMaterial({ color: 0x66bb6a }));
-                sprout.position.y = 0.35;
-                group.add(sprout);
-            } else if (stage === 2) {
-                // Growing — taller plant
-                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.8, 6), new THREE.MeshToonMaterial({ color: 0x388e3c }));
-                stem.position.y = 0.5;
-                group.add(stem);
-                const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 6), new THREE.MeshToonMaterial({ color: 0x4caf50 }));
-                leaf.position.y = 0.9;
-                group.add(leaf);
-            } else if (stage === 3) {
-                // Harvestable — full plant with colored fruit
-                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.0, 6), new THREE.MeshToonMaterial({ color: 0x2e7d32 }));
-                stem.position.y = 0.6;
-                group.add(stem);
-                const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshToonMaterial({ color: def.color }));
-                fruit.position.y = 1.1;
-                group.add(fruit);
-                addOutline(fruit, 0.15);
-                // Gentle bob animation tag
-                group.userData.harvestBob = true;
-            }
+        function buildCropStage(grp, def, stage) {
+            while(grp.children.length > 1) grp.remove(grp.children[grp.children.length-1]);
+            if (stage === 0) { const s=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),new THREE.MeshToonMaterial({color:0x4e342e})); s.position.y=0.12; grp.add(s); }
+            else if (stage === 1) { const s=new THREE.Mesh(new THREE.ConeGeometry(0.15,0.5,6),new THREE.MeshToonMaterial({color:0x66bb6a})); s.position.y=0.35; grp.add(s); }
+            else if (stage === 2) { const st=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,0.8,6),new THREE.MeshToonMaterial({color:0x388e3c})); st.position.y=0.5; grp.add(st); const lf=new THREE.Mesh(new THREE.SphereGeometry(0.25,6,6),new THREE.MeshToonMaterial({color:0x4caf50})); lf.position.y=0.9; grp.add(lf); }
+            else if (stage >= 3) { const st=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.12,1.0,6),new THREE.MeshToonMaterial({color:0x2e7d32})); st.position.y=0.6; grp.add(st); const fr=new THREE.Mesh(new THREE.SphereGeometry(0.35,8,8),new THREE.MeshToonMaterial({color:def.color})); fr.position.y=1.1; grp.add(fr); addOutline(fr,0.15); }
         }
-
         function updateCropVisual(cm) {
-            const def = CROPS[cm.userData.cropType];
-            if (!def) return;
-            updateCropGroupVisual(cm, def, cm.userData.stage);
-            // Update soil color based on watered state
-            if (cm.children[0]) {
-                cm.children[0].material.color.setHex(cm.userData.watered ? 0x5d4037 : 0x8d6e63);
-            }
+            const def = CROPS[cm.userData.cropType]; if(!def) return;
+            buildCropStage(cm, def, cm.userData.stage);
+            if(cm.children[0]) cm.children[0].material.color.setHex(cm.userData.watered ? 0x5d4037 : 0x8d6e63);
         }
 
         // ============================================================
-        // PLANET & PROP CREATION
+        // PLANET CREATION
         // ============================================================
-        function createPlanet(x, y, z, radius, color, name, deco) {
-            const p = new THREE.Mesh(
-                new THREE.IcosahedronGeometry(radius, 6),
-                new THREE.MeshToonMaterial({ color })
-            );
-            p.position.set(x, y, z);
-            p.userData = { radius, name, type: 'planet', occupiedCells: new Set() };
+        function createPlanet(x,y,z,radius,color,name,deco) {
+            const p = new THREE.Mesh(new THREE.IcosahedronGeometry(radius,6), new THREE.MeshToonMaterial({color}));
+            p.position.set(x,y,z);
+            p.userData = { radius, name, type:'planet', occupiedCells: new Set() };
             p.receiveShadow = true;
-            scene.add(p);
-            planets.push(p);
-            addOutline(p, 0.02);
+            scene.add(p); planets.push(p); addOutline(p,0.02);
 
-            for (let i = 0; i < deco; i++) {
-                const normal = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
-                const worldPt = normal.clone().multiplyScalar(radius).add(p.position);
-                const snapped = snapToGrid(worldPt, p);
-                if (p.userData.occupiedCells.has(snapped.gridKey)) continue;
+            // Create sub-surface grid
+            createPlanetGrid(p);
+
+            // Props
+            for(let i=0;i<deco;i++) {
+                const n=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize();
+                const snapped = snapToGrid(n.clone().multiplyScalar(radius).add(p.position), p);
+                if(p.userData.occupiedCells.has(snapped.gridKey)) continue;
                 p.userData.occupiedCells.add(snapped.gridKey);
-
-                const isTree = Math.random() > 0.4;
-                const mesh = isTree ?
-                    new THREE.Mesh(new THREE.ConeGeometry(0.9, 2.5, 6), new THREE.MeshToonMaterial({ color: 0x2e7d32 })) :
-                    new THREE.Mesh(new THREE.DodecahedronGeometry(0.7), new THREE.MeshToonMaterial({ color: 0x757575 }));
+                const isTree = Math.random()>0.4;
+                const mesh = isTree ? new THREE.Mesh(new THREE.ConeGeometry(0.9,2.5,6),new THREE.MeshToonMaterial({color:0x2e7d32})) : new THREE.Mesh(new THREE.DodecahedronGeometry(0.7),new THREE.MeshToonMaterial({color:0x757575}));
                 mesh.position.copy(snapped.position);
-                mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), snapped.normal);
-                mesh.userData = { type: 'prop', resource: isTree ? 'wood' : 'stone', planet: p, gridKey: snapped.gridKey };
-                mesh.castShadow = true;
-                scene.add(mesh);
-                addOutline(mesh, 0.1);
-                interactables.push(mesh);
+                mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), snapped.normal);
+                mesh.userData = { type:'prop', resource:isTree?'wood':'stone', planet:p, gridKey:snapped.gridKey };
+                mesh.castShadow=true; scene.add(mesh); addOutline(mesh,0.1); interactables.push(mesh);
             }
-
-            for (let i = 0; i < 6; i++) spawnWeed(p);
-
-            for (let i = 0; i < 3; i++) {
-                const sheep = new THREE.Group();
-                const body = new THREE.Mesh(new THREE.SphereGeometry(0.7, 10, 10), new THREE.MeshToonMaterial({ color: 0xffffff }));
-                sheep.add(body); addOutline(body, 0.1);
-                const eyeGeo = new THREE.SphereGeometry(0.12, 4, 4);
-                const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-                const e1 = new THREE.Mesh(eyeGeo, eyeMat); e1.position.set(0.3, 0.2, 0.6);
-                const e2 = new THREE.Mesh(eyeGeo, eyeMat); e2.position.set(-0.3, 0.2, 0.6);
-                sheep.add(e1, e2);
-                sheep.userData = { planet: p, offset: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(), jumpTime: Math.random() * 10 };
-                scene.add(sheep); creatures.push(sheep);
-            }
+            // Weeds
+            for(let i=0;i<6;i++) { const n=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize(); const sn=snapToGrid(n.clone().multiplyScalar(radius).add(p.position),p); if(p.userData.occupiedCells.has(sn.gridKey))continue; const w=new THREE.Mesh(new THREE.SphereGeometry(0.35,8,4),new THREE.MeshToonMaterial({color:0xb2ff59})); w.position.copy(sn.position); w.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),sn.normal); w.userData={type:'weed',planet:p,phase:Math.random()*10,gridKey:sn.gridKey}; scene.add(w);interactables.push(w);weeds.push(w);addOutline(w,0.2); }
+            // Sheep
+            for(let i=0;i<3;i++){const sh=new THREE.Group();const bd=new THREE.Mesh(new THREE.SphereGeometry(0.7,10,10),new THREE.MeshToonMaterial({color:0xffffff}));sh.add(bd);addOutline(bd,0.1);const eg=new THREE.SphereGeometry(0.12,4,4),em=new THREE.MeshBasicMaterial({color:0});const e1=new THREE.Mesh(eg,em);e1.position.set(0.3,0.2,0.6);const e2=new THREE.Mesh(eg,em);e2.position.set(-0.3,0.2,0.6);sh.add(e1,e2);sh.userData={planet:p,offset:new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize(),jumpTime:Math.random()*10};scene.add(sh);creatures.push(sh);}
             return p;
         }
 
-        function spawnWeed(planet) {
-            const normal = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
-            const worldPt = normal.clone().multiplyScalar(planet.userData.radius).add(planet.position);
-            const snapped = snapToGrid(worldPt, planet);
-            if (planet.userData.occupiedCells.has(snapped.gridKey)) return;
-            const weed = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 4), new THREE.MeshToonMaterial({ color: 0xb2ff59 }));
-            weed.position.copy(snapped.position);
-            weed.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), snapped.normal);
-            weed.userData = { type: 'weed', planet, phase: Math.random() * 10, gridKey: snapped.gridKey };
-            scene.add(weed); interactables.push(weed); weeds.push(weed); addOutline(weed, 0.2);
-        }
-
-        // --- Create world objects ---
-        const p1 = createPlanet(0, 0, 0, 15, 0x66cc66, "HOME GREEN", 18);
-        const p2 = createPlanet(100, 40, -100, 10, 0xcc6666, "RED WASTES", 8);
-        const p3 = createPlanet(-60, 60, -70, 16, 0x6666cc, "BLUE CRAGS", 12);
+        const p1 = createPlanet(0,0,0, 15, 0x66cc66, "HOME GREEN", 18);
+        const p2 = createPlanet(100,40,-100, 10, 0xcc6666, "RED WASTES", 8);
+        const p3 = createPlanet(-60,60,-70, 16, 0x6666cc, "BLUE CRAGS", 12);
         let currentPlanet = p1;
 
-        // --- Shipping Bin (on Home Green) ---
+        // --- Fixed structures on Home Green ---
+        // Shipping Bin
         const shippingBin = new THREE.Group();
-        const binBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 1.2), new THREE.MeshToonMaterial({ color: 0x6d4c41 }));
-        const binLid = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.15, 1.3), new THREE.MeshToonMaterial({ color: 0x4e342e }));
-        binLid.position.y = 0.55;
-        shippingBin.add(binBody, binLid);
-        addOutline(binBody, 0.08);
-        // Place on Home Green surface
-        const binNormal = new THREE.Vector3(0.5, 0.8, 0.3).normalize();
-        const binPos = binNormal.clone().multiplyScalar(p1.userData.radius).add(p1.position);
-        shippingBin.position.copy(binPos);
-        shippingBin.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), binNormal);
-        shippingBin.translateY(0.5);
-        shippingBin.userData = { type: 'shippingBin', planet: p1 };
-        scene.add(shippingBin);
-        interactables.push(shippingBin);
+        const binBody = new THREE.Mesh(new THREE.BoxGeometry(1.5,1,1.2),new THREE.MeshToonMaterial({color:0x6d4c41}));
+        const binLid = new THREE.Mesh(new THREE.BoxGeometry(1.6,0.15,1.3),new THREE.MeshToonMaterial({color:0x4e342e}));
+        binLid.position.y=0.55; shippingBin.add(binBody,binLid); addOutline(binBody,0.08);
+        const binN = new THREE.Vector3(0.5,0.8,0.3).normalize();
+        shippingBin.position.copy(binN.clone().multiplyScalar(p1.userData.radius).add(p1.position));
+        shippingBin.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),binN);
+        shippingBin.translateY(0.5); shippingBin.userData={type:'shippingBin',planet:p1};
+        scene.add(shippingBin); interactables.push(shippingBin);
 
-        // --- Bed (on Home Green) ---
+        // Bed
         const bed = new THREE.Group();
-        const bedBase = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 2.0), new THREE.MeshToonMaterial({ color: 0x5d4037 }));
-        const bedBlanket = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 1.6), new THREE.MeshToonMaterial({ color: 0x7986cb }));
-        bedBlanket.position.y = 0.3; bedBlanket.position.z = -0.15;
-        const bedPillow = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.4), new THREE.MeshToonMaterial({ color: 0xffffff }));
-        bedPillow.position.set(0, 0.35, 0.7);
-        bed.add(bedBase, bedBlanket, bedPillow);
-        addOutline(bedBase, 0.06);
-        const bedNormal = new THREE.Vector3(-0.4, 0.9, -0.2).normalize();
-        const bedPos = bedNormal.clone().multiplyScalar(p1.userData.radius).add(p1.position);
-        bed.position.copy(bedPos);
-        bed.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), bedNormal);
-        bed.translateY(0.2);
-        bed.userData = { type: 'bed', planet: p1 };
-        scene.add(bed);
-        interactables.push(bed);
+        bed.add(new THREE.Mesh(new THREE.BoxGeometry(1.2,0.4,2.0),new THREE.MeshToonMaterial({color:0x5d4037})));
+        const blanket=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.25,1.6),new THREE.MeshToonMaterial({color:0x7986cb}));blanket.position.set(0,0.3,-0.15);bed.add(blanket);
+        const pillow=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.2,0.4),new THREE.MeshToonMaterial({color:0xffffff}));pillow.position.set(0,0.35,0.7);bed.add(pillow);
+        addOutline(bed.children[0],0.06);
+        const bedN=new THREE.Vector3(-0.4,0.9,-0.2).normalize();
+        bed.position.copy(bedN.clone().multiplyScalar(p1.userData.radius).add(p1.position));
+        bed.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),bedN);
+        bed.translateY(0.2); bed.userData={type:'bed',planet:p1};
+        scene.add(bed); interactables.push(bed);
 
         // ============================================================
         // PLAYER
         // ============================================================
         const player = new THREE.Group();
-        const pBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.7, 4, 8), new THREE.MeshToonMaterial({ color: 0xffaacc }));
-        pBody.position.y = 0.8; pBody.castShadow = true;
-        player.add(pBody); scene.add(player); player.position.set(0, 20, 0);
-        addOutline(pBody, 0.1);
-
-        let velocity = new THREE.Vector3(), isGrounded = false, targetPlanet = null;
-        const jumpLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
+        const pBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.4,0.7,4,8),new THREE.MeshToonMaterial({color:0xffaacc}));
+        pBody.position.y=0.8; pBody.castShadow=true; player.add(pBody); scene.add(player); player.position.set(0,20,0); addOutline(pBody,0.1);
+        let velocity=new THREE.Vector3(), isGrounded=false, targetPlanet=null;
+        const jumpLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.5}));
         scene.add(jumpLine);
 
-        // ============================================================
-        // HUD SETUP
-        // ============================================================
-        const cycleCont = document.getElementById('cycle-container');
-        for (let i = 0; i <= 4; i++) {
-            const dot = document.createElement('div');
-            dot.className = 'hud-dot';
-            const size = (i === 0 || i === 4) ? 6 : (i === 2 ? 10 : 3);
-            dot.style.width = size + 'px'; dot.style.height = size + 'px';
-            const angle = (i / 4) * Math.PI;
-            dot.style.left = (120 - Math.cos(angle) * 100 - size / 2) + 'px';
-            dot.style.top = (50 - Math.sin(angle) * 40 - size / 2) + 'px';
-            cycleCont.appendChild(dot);
-        }
+        // HUD dots
+        const cycleCont=document.getElementById('cycle-container');
+        for(let i=0;i<=4;i++){const d=document.createElement('div');d.className='hud-dot';const sz=(i===0||i===4)?6:(i===2?10:3);d.style.width=sz+'px';d.style.height=sz+'px';const a=(i/4)*Math.PI;d.style.left=(120-Math.cos(a)*100-sz/2)+'px';d.style.top=(50-Math.sin(a)*40-sz/2)+'px';cycleCont.appendChild(d);}
 
         // ============================================================
-        // CONTROLS
+        // CONTROLS (Mobile-first with sprint)
         // ============================================================
-        const controls = {
-            L: { active: false, id: -1, origin: { x: 0, y: 0 }, curr: { x: 0, y: 0 } },
-            R: { active: false, id: -1, origin: { x: 0, y: 0 }, curr: { x: 0, y: 0 } },
-            keys: {}
-        };
-        const STICK_DEADZONE = 8, STICK_MAX = 50;
-        const JOYSTICK_ZONE_TOP = 0.70;
+        const controls = { L:{active:false,id:-1,origin:{x:0,y:0},curr:{x:0,y:0}}, R:{active:false,id:-1,origin:{x:0,y:0},curr:{x:0,y:0}}, keys:{} };
+        const STICK_DEADZONE=8, STICK_MAX=50, JOY_ZONE=0.70;
 
         window.toggleTools = () => document.getElementById('tool-list').classList.toggle('open');
         window.selectTool = (t) => {
-            window.activeTool = t;
-            document.querySelectorAll('.tool').forEach(el => el.classList.remove('active'));
+            window.activeTool=t; document.querySelectorAll('.tool').forEach(el=>el.classList.remove('active'));
             document.getElementById(`tool-${t}`).classList.add('active');
-            const labels = { plow:'🚜 PLOW', water:'💧 WATER', seed:'🌱 SEED', hammer:'🔨 HAMMER', fence:'🚧 FENCE' };
-            document.getElementById('status').innerText = labels[t] || t.toUpperCase();
-            document.getElementById('tool-list').classList.remove('open');
+            const labels={plow:'🚜 PLOW',water:'💧 WATER',seed:'🌱 SEED',hammer:'🔨 HAMMER',fence:'🚧 FENCE'};
+            document.getElementById('status').innerText=labels[t]||t; document.getElementById('tool-list').classList.remove('open');
         };
 
-        window.addEventListener('keydown', (e) => controls.keys[e.code] = true);
-        window.addEventListener('keyup', (e) => controls.keys[e.code] = false);
-        window.addEventListener('wheel', (e) => camZoom = Math.max(8, Math.min(45, camZoom + e.deltaY * 0.02)));
+        // Keyboard
+        addEventListener('keydown',e=>{controls.keys[e.code]=true; if(e.code==='ShiftLeft'||e.code==='ShiftRight') isSprinting=true;});
+        addEventListener('keyup',e=>{controls.keys[e.code]=false; if(e.code==='ShiftLeft'||e.code==='ShiftRight') isSprinting=false;});
+        addEventListener('wheel',e=>camZoom=Math.max(8,Math.min(45,camZoom+e.deltaY*0.02)));
 
-        renderer.domElement.addEventListener('mousedown', (e) => {
-            if (!isMobile) {
-                if (document.pointerLockElement !== renderer.domElement) renderer.domElement.requestPointerLock();
-                else handleInteraction(e.clientX, e.clientY);
-            }
-        });
-        document.addEventListener('pointerlockchange', () => document.getElementById('crosshair').style.display = document.pointerLockElement ? 'block' : 'none');
-        window.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement === renderer.domElement) {
-                player.rotateY(-e.movementX * 0.003);
-                camPitch = Math.max(-0.6, Math.min(0.8, camPitch - e.movementY * 0.003));
-            }
-        });
+        // Mouse
+        renderer.domElement.addEventListener('mousedown',e=>{if(!isMobile){if(document.pointerLockElement!==renderer.domElement)renderer.domElement.requestPointerLock();else handleInteraction(e.clientX,e.clientY);}});
+        document.addEventListener('pointerlockchange',()=>document.getElementById('crosshair').style.display=document.pointerLockElement?'block':'none');
+        addEventListener('mousemove',e=>{if(document.pointerLockElement===renderer.domElement){player.rotateY(-e.movementX*0.003);camPitch=Math.max(-0.6,Math.min(0.8,camPitch-e.movementY*0.003));}});
 
-        // --- Touch Controls ---
-        window.addEventListener('touchstart', (e) => {
+        // Touch — with double-tap sprint
+        addEventListener('touchstart',e=>{
             e.preventDefault();
-            if (e.touches.length === 2) {
-                initialPinchDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                return;
-            }
-            for (let t of e.changedTouches) {
-                if (t.target.closest('#tool-toggle') || t.target.closest('#tool-list') || t.target.id === 'start-btn') continue;
-                if (t.target.id === 'jump-btn' || t.target.closest('#jump-btn')) { handleJump(); continue; }
-                const x = t.clientX, y = t.clientY;
-                const screenH = window.innerHeight, screenW = window.innerWidth;
-                if (y > screenH * JOYSTICK_ZONE_TOP) {
-                    if (x < screenW * 0.40) {
-                        controls.L.active = true; controls.L.id = t.identifier;
-                        controls.L.origin = { x, y }; controls.L.curr = { x, y };
-                        const base = document.getElementById('joy-L-base');
-                        base.style.display = 'block'; base.style.left = `${x - 50}px`; base.style.top = `${y - 50}px`;
-                    } else if (x > screenW * 0.60) {
-                        controls.R.active = true; controls.R.id = t.identifier;
-                        controls.R.origin = { x, y }; controls.R.curr = { x, y };
-                        const base = document.getElementById('joy-R-base');
-                        base.style.display = 'block'; base.style.left = `${x - 50}px`; base.style.top = `${y - 50}px`;
+            if(e.touches.length===2){initialPinchDist=Math.hypot(e.touches[0].pageX-e.touches[1].pageX,e.touches[0].pageY-e.touches[1].pageY);return;}
+            for(let t of e.changedTouches){
+                if(t.target.closest('#tool-toggle')||t.target.closest('#tool-list')||t.target.id==='start-btn')continue;
+                if(t.target.id==='jump-btn'||t.target.closest('#jump-btn')){handleJump();continue;}
+                const x=t.clientX,y=t.clientY,sH=innerHeight,sW=innerWidth;
+                if(y > sH*JOY_ZONE){
+                    if(x < sW*0.40){
+                        // Left stick — check for double-tap sprint
+                        const now = Date.now();
+                        if (now - lastLeftStickTap < SPRINT_DOUBLETAP_MS) {
+                            isSprinting = true;
+                            document.getElementById('sprint-indicator').classList.add('active');
+                        }
+                        lastLeftStickTap = now;
+                        controls.L.active=true; controls.L.id=t.identifier; controls.L.origin={x,y}; controls.L.curr={x,y};
+                        const base=document.getElementById('joy-L-base'); base.style.display='block'; base.style.left=`${x-50}px`; base.style.top=`${y-50}px`;
+                    } else if(x > sW*0.60){
+                        controls.R.active=true; controls.R.id=t.identifier; controls.R.origin={x,y}; controls.R.curr={x,y};
+                        const base=document.getElementById('joy-R-base'); base.style.display='block'; base.style.left=`${x-50}px`; base.style.top=`${y-50}px`;
                     }
-                } else {
-                    handleInteraction(x, y);
-                }
+                } else { handleInteraction(x,y); }
             }
-        }, { passive: false });
+        },{passive:false});
 
-        window.addEventListener('touchmove', (e) => {
+        addEventListener('touchmove',e=>{
             e.preventDefault();
-            if (e.touches.length === 2 && initialPinchDist) {
-                const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                camZoom = Math.max(8, Math.min(45, camZoom + (initialPinchDist - dist) * 0.05));
-                initialPinchDist = dist; return;
-            }
-            for (let t of e.changedTouches) {
-                if (controls.L.active && t.identifier === controls.L.id) {
-                    controls.L.curr = { x: t.clientX, y: t.clientY };
-                    const dx = t.clientX - controls.L.origin.x, dy = t.clientY - controls.L.origin.y;
-                    const d = Math.min(Math.hypot(dx, dy), STICK_MAX), ang = Math.atan2(dy, dx);
-                    document.getElementById('joy-L-knob').style.transform = `translate(${Math.cos(ang) * d}px, ${Math.sin(ang) * d}px)`;
+            if(e.touches.length===2&&initialPinchDist){const d=Math.hypot(e.touches[0].pageX-e.touches[1].pageX,e.touches[0].pageY-e.touches[1].pageY);camZoom=Math.max(8,Math.min(45,camZoom+(initialPinchDist-d)*0.05));initialPinchDist=d;return;}
+            for(let t of e.changedTouches){
+                if(controls.L.active&&t.identifier===controls.L.id){
+                    controls.L.curr={x:t.clientX,y:t.clientY};
+                    const dx=t.clientX-controls.L.origin.x,dy=t.clientY-controls.L.origin.y;
+                    const d=Math.min(Math.hypot(dx,dy),STICK_MAX),ang=Math.atan2(dy,dx);
+                    document.getElementById('joy-L-knob').style.transform=`translate(${Math.cos(ang)*d}px,${Math.sin(ang)*d}px)`;
                 }
-                if (controls.R.active && t.identifier === controls.R.id) {
-                    const dx = t.clientX - controls.R.curr.x, dy = t.clientY - controls.R.curr.y;
-                    player.rotateY(-dx * 0.006);
-                    camPitch = Math.max(-0.6, Math.min(0.8, camPitch - dy * 0.006));
-                    controls.R.curr = { x: t.clientX, y: t.clientY };
-                    const bx = t.clientX - controls.R.origin.x, by = t.clientY - controls.R.origin.y;
-                    const bd = Math.min(Math.hypot(bx, by), STICK_MAX), ba = Math.atan2(by, bx);
-                    document.getElementById('joy-R-knob').style.transform = `translate(${Math.cos(ba) * bd}px, ${Math.sin(ba) * bd}px)`;
+                if(controls.R.active&&t.identifier===controls.R.id){
+                    const dx=t.clientX-controls.R.curr.x,dy=t.clientY-controls.R.curr.y;
+                    player.rotateY(-dx*0.006); camPitch=Math.max(-0.6,Math.min(0.8,camPitch-dy*0.006));
+                    controls.R.curr={x:t.clientX,y:t.clientY};
+                    const bx=t.clientX-controls.R.origin.x,by=t.clientY-controls.R.origin.y;
+                    const bd=Math.min(Math.hypot(bx,by),STICK_MAX),ba=Math.atan2(by,bx);
+                    document.getElementById('joy-R-knob').style.transform=`translate(${Math.cos(ba)*bd}px,${Math.sin(ba)*bd}px)`;
                 }
             }
-        }, { passive: false });
+        },{passive:false});
 
-        window.addEventListener('touchend', (e) => {
-            for (let t of e.changedTouches) {
-                if (controls.L.active && t.identifier === controls.L.id) {
-                    controls.L.active = false; document.getElementById('joy-L-base').style.display = 'none';
-                    document.getElementById('joy-L-knob').style.transform = 'translate(0,0)';
+        addEventListener('touchend',e=>{
+            for(let t of e.changedTouches){
+                if(controls.L.active&&t.identifier===controls.L.id){
+                    controls.L.active=false;
+                    document.getElementById('joy-L-base').style.display='none';
+                    document.getElementById('joy-L-knob').style.transform='translate(0,0)';
+                    // End sprint when stick released
+                    isSprinting = false;
+                    document.getElementById('sprint-indicator').classList.remove('active');
                 }
-                if (controls.R.active && t.identifier === controls.R.id) {
-                    controls.R.active = false; document.getElementById('joy-R-base').style.display = 'none';
-                    document.getElementById('joy-R-knob').style.transform = 'translate(0,0)';
+                if(controls.R.active&&t.identifier===controls.R.id){
+                    controls.R.active=false;
+                    document.getElementById('joy-R-base').style.display='none';
+                    document.getElementById('joy-R-knob').style.transform='translate(0,0)';
                 }
             }
-            if (e.touches.length < 2) initialPinchDist = null;
+            if(e.touches.length<2) initialPinchDist=null;
         });
 
         // ============================================================
-        // INTERACTION SYSTEM
+        // INTERACTION (Fixed: seed & water now work on mounds/crops)
         // ============================================================
         function handleInteraction(x, y) {
             const mouse = new THREE.Vector2();
-            if (document.pointerLockElement) mouse.set(0, 0);
-            else mouse.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
-
+            if(document.pointerLockElement) mouse.set(0,0);
+            else mouse.set((x/innerWidth)*2-1, -(y/innerHeight)*2+1);
             const ray = new THREE.Raycaster();
             ray.setFromCamera(mouse, camera);
             const iHits = ray.intersectObjects(interactables, true);
             const pHits = ray.intersectObject(currentPlanet);
-            const interactDist = getInteractDistance(currentPlanet);
+            const maxDist = getInteractDist(currentPlanet);
 
-            // --- Hit existing object ---
+            // Find the interactable parent with userData.type
+            function resolveObj(hit) {
+                let o = hit.object;
+                while(o && !o.userData.type && o.parent && o.parent !== scene) o = o.parent;
+                return o;
+            }
+
+            // --- Check interactables first ---
             const hit = iHits[0];
-            if (hit && hit.point.distanceTo(player.position) < interactDist) {
-                let obj = hit.object;
-                while (obj && !obj.userData.type && obj.parent && obj.parent !== scene) obj = obj.parent;
+            if (hit && hit.point.distanceTo(player.position) < maxDist) {
+                const obj = resolveObj(hit);
                 const type = obj.userData.type;
 
-                // BED — sleep
-                if (type === 'bed') {
-                    sleepTransition();
-                    return;
-                }
-
-                // SHIPPING BIN — deposit produce
+                if (type === 'bed') { sleepTransition(); return; }
                 if (type === 'shippingBin') {
-                    const prodKeys = Object.keys(GS.produce).filter(k => GS.produce[k] > 0);
-                    if (prodKeys.length > 0) {
-                        // Ship first available produce type
-                        const key = prodKeys[0];
-                        GS.produce[key]--;
-                        GS.shippingBin.push(key);
-                        showToast(`📦 Shipped ${CROPS[key].emoji} ${CROPS[key].name}!`);
-                        playSFX('coin');
-                        updateInventory();
-                    } else {
-                        showToast("Nothing to ship! Harvest crops first.");
-                    }
+                    const pk = Object.keys(GS.produce).filter(k=>GS.produce[k]>0);
+                    if(pk.length>0){const k=pk[0];GS.produce[k]--;GS.shippingBin.push(k);showToast(`📦 Shipped ${CROPS[k].emoji} ${CROPS[k].name}!`);playSFX('coin');updateInventory();}
+                    else showToast("Nothing to ship!");
                     return;
                 }
 
-                // HAMMER — destroy
+                // HAMMER destroys anything
                 if (window.activeTool === 'hammer') {
-                    if (!useStamina(5)) return;
-                    if (type === 'prop') {
-                        obj.userData.resource === 'wood' ? GS.wood++ : GS.stone++;
-                    } else if (type === 'fence') {
-                        GS.wood++;
-                    }
-                    if (type === 'crop') {
-                        const idx = cropMeshes.indexOf(obj);
-                        if (idx > -1) cropMeshes.splice(idx, 1);
-                    }
-                    if (obj.userData.gridKey && obj.userData.planet) {
-                        obj.userData.planet.userData.occupiedCells.delete(obj.userData.gridKey);
-                    }
-                    activeAnims.push({ obj, time: 0, type: 'destroy' });
-                    const idx = interactables.indexOf(obj);
-                    if (idx > -1) interactables.splice(idx, 1);
-                    const wIdx = weeds.indexOf(obj);
-                    if (wIdx > -1) weeds.splice(wIdx, 1);
-                    playSFX('pop');
-                    updateInventory();
-                    return;
+                    if(!useStamina(5)) return;
+                    if(type==='prop') obj.userData.resource==='wood'?GS.wood++:GS.stone++;
+                    if(type==='fence') GS.wood++;
+                    if(type==='crop'){const ci=cropMeshes.indexOf(obj);if(ci>-1)cropMeshes.splice(ci,1);}
+                    if(obj.userData.gridKey&&obj.userData.planet) obj.userData.planet.userData.occupiedCells.delete(obj.userData.gridKey);
+                    activeAnims.push({obj,time:0,type:'destroy'});
+                    const ii=interactables.indexOf(obj);if(ii>-1)interactables.splice(ii,1);
+                    const wi=weeds.indexOf(obj);if(wi>-1)weeds.splice(wi,1);
+                    playSFX('pop'); updateInventory(); return;
                 }
 
-                // WATER — water a crop
+                // SEED on mound → plant crop
+                if (window.activeTool === 'seed' && type === 'mound') {
+                    const seedType = GS.selectedSeed;
+                    if(!GS.seeds[seedType]||GS.seeds[seedType]<=0){showToast(`No ${CROPS[seedType].name} seeds!`);return;}
+                    if(!useStamina(2)) return;
+                    GS.seeds[seedType]--;
+                    const planet = obj.userData.planet;
+                    const gridKey = obj.userData.gridKey;
+                    const snapped = gridKeyToSnapped(gridKey, planet);
+                    // Remove mound, replace with crop
+                    scene.remove(obj);
+                    const mi=interactables.indexOf(obj);if(mi>-1)interactables.splice(mi,1);
+                    planet.userData.occupiedCells.delete(gridKey); // createCropMesh will re-add it
+                    createCropMesh(planet, snapped, seedType, 0, false, 0);
+                    playSFX('pop'); updateInventory(); return;
+                }
+
+                // WATER on crop
                 if (window.activeTool === 'water' && type === 'crop') {
-                    if (obj.userData.watered) {
-                        showToast("Already watered today!");
-                        return;
-                    }
-                    if (!useStamina(3)) return;
-                    obj.userData.watered = true;
-                    updateCropVisual(obj);
-                    playSFX('water');
-                    // Water splash animation
-                    activeAnims.push({ obj, time: 0, type: 'waterSplash' });
-                    return;
+                    if(obj.userData.watered){showToast("Already watered!");return;}
+                    if(!useStamina(3))return;
+                    obj.userData.watered=true; updateCropVisual(obj); playSFX('water'); return;
                 }
 
-                // HARVEST — pick mature crop
-                if (type === 'crop' && obj.userData.stage >= 3) {
-                    if (window.activeTool === 'plow' || window.activeTool === 'water' || window.activeTool === 'seed') {
-                        // Any non-destructive tool can harvest
-                        const cropType = obj.userData.cropType;
-                        GS.produce[cropType] = (GS.produce[cropType] || 0) + 1;
-                        showToast(`${CROPS[cropType].emoji} Harvested ${CROPS[cropType].name}!`);
-                        playSFX('harvest');
-                        // Remove crop, free cell
-                        obj.userData.planet.userData.occupiedCells.delete(obj.userData.gridKey);
-                        const cmIdx = cropMeshes.indexOf(obj);
-                        if (cmIdx > -1) cropMeshes.splice(cmIdx, 1);
-                        activeAnims.push({ obj, time: 0, type: 'destroy' });
-                        const iIdx = interactables.indexOf(obj);
-                        if (iIdx > -1) interactables.splice(iIdx, 1);
-                        updateInventory();
-                        return;
-                    }
+                // WATER on mound (water before planting is ok — just darkens soil)
+                if (window.activeTool === 'water' && type === 'mound') {
+                    if(!useStamina(3))return;
+                    if(obj.children[0]) obj.children[0].material.color.setHex(0x5d4037);
+                    playSFX('water'); return;
                 }
 
-                // SEED — plant on empty mound/crop-slot (handled below on ground hit)
-                if (window.activeTool === 'seed' && type === 'crop' && obj.userData.stage === 0) {
-                    // Already has a seed
-                    showToast("Already planted here!");
-                    return;
+                // HARVEST mature crop (any tool except hammer)
+                if (type === 'crop' && obj.userData.stage >= 3 && window.activeTool !== 'hammer') {
+                    const ct=obj.userData.cropType;
+                    GS.produce[ct]=(GS.produce[ct]||0)+1;
+                    showToast(`${CROPS[ct].emoji} Harvested ${CROPS[ct].name}!`);
+                    playSFX('harvest');
+                    obj.userData.planet.userData.occupiedCells.delete(obj.userData.gridKey);
+                    const ci=cropMeshes.indexOf(obj);if(ci>-1)cropMeshes.splice(ci,1);
+                    activeAnims.push({obj,time:0,type:'destroy'});
+                    const ii=interactables.indexOf(obj);if(ii>-1)interactables.splice(ii,1);
+                    updateInventory(); return;
                 }
 
-                // FENCE rotation
-                if (window.activeTool === 'fence' && type === 'fence') {
-                    obj.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 4);
-                    playSFX('thud');
-                    return;
-                }
+                // Fence rotation
+                if(window.activeTool==='fence'&&type==='fence'){obj.rotateOnAxis(new THREE.Vector3(0,1,0),Math.PI/4);playSFX('thud');return;}
                 return;
             }
 
-            // --- Hit planet surface (place new things) ---
-            if (pHits[0] && pHits[0].point.distanceTo(player.position) < interactDist) {
+            // --- Hit planet surface ---
+            if(pHits[0] && pHits[0].point.distanceTo(player.position) < maxDist) {
                 const planet = pHits[0].object;
                 const snapped = snapToGrid(pHits[0].point, planet);
-                if (planet.userData.occupiedCells.has(snapped.gridKey)) return;
+                if(planet.userData.occupiedCells.has(snapped.gridKey)) return;
 
-                if (window.activeTool === 'plow') {
-                    if (!useStamina(4)) return;
-                    // Create a crop slot (stage 0 = empty soil, ready for seed)
-                    // We skip the mound step — plow goes directly to plantable soil
+                if(window.activeTool === 'plow') {
+                    if(!useStamina(4)) return;
                     planet.userData.occupiedCells.add(snapped.gridKey);
                     const soil = new THREE.Group();
-                    const mound = new THREE.Mesh(
-                        new THREE.CylinderGeometry(0.7, 0.8, 0.15, 12),
-                        new THREE.MeshToonMaterial({ color: 0x8d6e63 })
-                    );
-                    soil.add(mound);
+                    const mound = new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.8,0.15,12),new THREE.MeshToonMaterial({color:0x8d6e63}));
+                    soil.add(mound); addOutline(mound,0.05);
                     soil.position.copy(snapped.position);
-                    soil.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), snapped.normal);
+                    soil.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), snapped.normal);
                     soil.translateY(0.08);
-                    soil.userData = { type: 'mound', planet, gridKey: snapped.gridKey };
-                    soil.scale.set(0, 0, 0);
-                    scene.add(soil);
-                    interactables.push(soil);
-                    addOutline(mound, 0.05);
-                    activeAnims.push({ obj: soil, time: 0, targetY: 1, targetXZ: 1, type: 'pop' });
-                    playSFX('pop');
-
-                } else if (window.activeTool === 'seed') {
-                    // Can't plant on unplowed ground
+                    soil.userData = { type:'mound', planet, gridKey:snapped.gridKey };
+                    soil.scale.set(0,0,0); scene.add(soil); interactables.push(soil);
+                    activeAnims.push({obj:soil,time:0,targetY:1,targetXZ:1,type:'pop'}); playSFX('pop');
+                } else if(window.activeTool === 'seed') {
                     showToast("Plow the ground first!");
-
-                } else if (window.activeTool === 'fence' && GS.wood > 0) {
-                    if (!useStamina(3)) return;
+                } else if(window.activeTool === 'fence' && GS.wood > 0) {
+                    if(!useStamina(3)) return;
                     GS.wood--; updateInventory();
                     planet.userData.occupiedCells.add(snapped.gridKey);
-                    const fence = new THREE.Group();
-                    const postGeo = new THREE.BoxGeometry(0.2, 1.2, 0.2);
-                    const postMat = new THREE.MeshToonMaterial({ color: 0x5d4037 });
-                    const railGeo = new THREE.BoxGeometry(FENCE_SEGMENT_LENGTH, 0.15, 0.1);
-                    const railMat = new THREE.MeshToonMaterial({ color: 0x795548 });
-                    const post1 = new THREE.Mesh(postGeo, postMat); post1.position.x = -FENCE_SEGMENT_LENGTH * 0.4;
-                    const post2 = new THREE.Mesh(postGeo, postMat); post2.position.x = FENCE_SEGMENT_LENGTH * 0.4;
-                    const rail1 = new THREE.Mesh(railGeo, railMat); rail1.position.y = 0.35;
-                    const rail2 = new THREE.Mesh(railGeo, railMat); rail2.position.y = -0.1;
-                    fence.add(post1, post2, rail1, rail2);
+                    const fence=new THREE.Group();
+                    const pg=new THREE.BoxGeometry(0.2,1.2,0.2),pm=new THREE.MeshToonMaterial({color:0x5d4037});
+                    const rg=new THREE.BoxGeometry(FENCE_LEN,0.15,0.1),rm=new THREE.MeshToonMaterial({color:0x795548});
+                    const p1f=new THREE.Mesh(pg,pm);p1f.position.x=-FENCE_LEN*0.4;
+                    const p2f=new THREE.Mesh(pg,pm);p2f.position.x=FENCE_LEN*0.4;
+                    const r1=new THREE.Mesh(rg,rm);r1.position.y=0.35;
+                    const r2=new THREE.Mesh(rg,rm);r2.position.y=-0.1;
+                    fence.add(p1f,p2f,r1,r2);
                     fence.position.copy(snapped.position);
-                    const upQ = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), snapped.normal);
+                    const upQ=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),snapped.normal);
                     fence.quaternion.copy(upQ);
-                    const toPlayer = player.position.clone().sub(snapped.position).projectOnPlane(snapped.normal).normalize();
-                    const localFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(upQ);
-                    const localRight = new THREE.Vector3(1, 0, 0).applyQuaternion(upQ);
-                    const angle = Math.atan2(toPlayer.dot(localRight), toPlayer.dot(localFwd));
-                    fence.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.round(angle / (Math.PI / 2)) * (Math.PI / 2));
-                    fence.userData = { type: 'fence', planet, gridKey: snapped.gridKey };
-                    fence.scale.set(0, 0, 0);
-                    scene.add(fence); interactables.push(fence);
-                    activeAnims.push({ obj: fence, time: 0, targetY: 1, targetXZ: 1, type: 'pop' });
-                    playSFX('thud');
-                }
-                return;
-            }
-
-            // --- Hit a mound (plant seed on it) ---
-            // Re-check interactables for mound hits with seed tool
-            if (window.activeTool === 'seed') {
-                const moundHits = ray.intersectObjects(interactables, true);
-                for (const mh of moundHits) {
-                    let mObj = mh.object;
-                    while (mObj && !mObj.userData.type && mObj.parent && mObj.parent !== scene) mObj = mObj.parent;
-                    if (mObj.userData.type === 'mound' && mh.point.distanceTo(player.position) < interactDist) {
-                        const seedType = GS.selectedSeed;
-                        if (!GS.seeds[seedType] || GS.seeds[seedType] <= 0) {
-                            showToast(`No ${CROPS[seedType].name} seeds! Buy some.`);
-                            return;
-                        }
-                        if (!useStamina(2)) return;
-                        GS.seeds[seedType]--;
-                        // Convert mound to crop
-                        const planet = mObj.userData.planet;
-                        const gridKey = mObj.userData.gridKey;
-                        const snapped = snapToGridByKey(gridKey, planet);
-                        // Remove mound
-                        scene.remove(mObj);
-                        const mIdx = interactables.indexOf(mObj);
-                        if (mIdx > -1) interactables.splice(mIdx, 1);
-                        // Create crop
-                        createCropMesh(planet, snapped, seedType, 0, false, 0);
-                        playSFX('pop');
-                        updateInventory();
-                        return;
-                    }
+                    const toP=player.position.clone().sub(snapped.position).projectOnPlane(snapped.normal).normalize();
+                    const lF=new THREE.Vector3(0,0,1).applyQuaternion(upQ), lR=new THREE.Vector3(1,0,0).applyQuaternion(upQ);
+                    const ang=Math.atan2(toP.dot(lR),toP.dot(lF));
+                    fence.rotateOnAxis(new THREE.Vector3(0,1,0),Math.round(ang/(Math.PI/2))*(Math.PI/2));
+                    fence.userData={type:'fence',planet,gridKey:snapped.gridKey};
+                    fence.scale.set(0,0,0); scene.add(fence); interactables.push(fence);
+                    activeAnims.push({obj:fence,time:0,targetY:1,targetXZ:1,type:'pop'}); playSFX('thud');
                 }
             }
         }
 
         // ============================================================
-        // JUMP
+        // JUMP & BUBBLES
         // ============================================================
-        function handleJump() {
-            if (!isGrounded) return;
-            const up = player.position.clone().sub(currentPlanet.position).normalize();
-            if (targetPlanet) {
-                const dir = targetPlanet.position.clone().sub(player.position).normalize();
-                const dist = player.position.distanceTo(targetPlanet.position);
-                velocity.copy(dir.multiplyScalar(dist * 0.052)).addScaledVector(up, 0.3);
-            } else {
-                velocity.copy(up).multiplyScalar(0.7);
-            }
-            isGrounded = false;
-            playSFX('jump');
-        }
+        function handleJump(){if(!isGrounded)return;const up=player.position.clone().sub(currentPlanet.position).normalize();if(targetPlanet){const dir=targetPlanet.position.clone().sub(player.position).normalize();velocity.copy(dir.multiplyScalar(player.position.distanceTo(targetPlanet.position)*0.052)).addScaledVector(up,0.3);}else velocity.copy(up).multiplyScalar(0.7);isGrounded=false;playSFX('jump');}
+        function showBaaaBubble(pos){const b=document.createElement('div');b.className='baaa-bubble';b.innerText='Baaa!';document.body.appendChild(b);const v=pos.clone().project(camera);b.style.left=`${(v.x+1)/2*innerWidth}px`;b.style.top=`${(-v.y+1)/2*innerHeight-30}px`;setTimeout(()=>{b.style.opacity=0;setTimeout(()=>b.remove(),500);},1000);}
 
         // ============================================================
-        // SPEECH BUBBLES
+        // GAME LOOP
         // ============================================================
-        function showBaaaBubble(pos) {
-            const bubble = document.createElement('div');
-            bubble.className = 'baaa-bubble'; bubble.innerText = 'Baaa!';
-            document.body.appendChild(bubble);
-            const vector = pos.clone().project(camera);
-            bubble.style.left = `${(vector.x + 1) / 2 * window.innerWidth}px`;
-            bubble.style.top = `${(-vector.y + 1) / 2 * window.innerHeight - 30}px`;
-            setTimeout(() => { bubble.style.opacity = 0; setTimeout(() => bubble.remove(), 500); }, 1000);
-        }
-
-        // ============================================================
-        // MAIN GAME LOOP
-        // ============================================================
-        function animate() {
+        function animate(){
             requestAnimationFrame(animate);
-            const dt = 1 / 60; // approximate
             worldTime += 0.0004;
-            dayTimeElapsed += dt;
-            const cyclePos = worldTime % (Math.PI * 2);
+            const cyclePos = worldTime%(Math.PI*2);
 
-            // --- Day/Night HUD ---
-            const icon = document.getElementById('celestial-icon');
-            const hudAngle = (cyclePos % Math.PI);
-            icon.style.left = (120 - Math.cos(hudAngle) * 100) + 'px';
-            icon.style.top = (50 - Math.sin(hudAngle) * 40) + 'px';
-            const cosVal = Math.cos(cyclePos);
-            const isDay = cosVal > -0.2;
-            icon.innerText = isDay ? '☀️' : '🌙';
-            icon.style.filter = isDay ? 'drop-shadow(0 0 8px orange)' : 'drop-shadow(0 0 8px #fff)';
+            // Day/Night
+            const icon=document.getElementById('celestial-icon');
+            const hudA=(cyclePos%Math.PI);
+            icon.style.left=(120-Math.cos(hudA)*100)+'px'; icon.style.top=(50-Math.sin(hudA)*40)+'px';
+            const isDay=Math.cos(cyclePos)>-0.2;
+            icon.innerText=isDay?'☀️':'🌙'; icon.style.filter=isDay?'drop-shadow(0 0 8px orange)':'drop-shadow(0 0 8px #fff)';
+            const dayF=isDay?Math.max(0,Math.sin(cyclePos)):0;
+            sunLight.position.set(Math.cos(cyclePos)*1000,Math.sin(cyclePos)*1000,0);
+            sunLight.intensity=Math.max(0.1,dayF+0.6); ambLight.intensity=Math.max(0.2,(dayF+1)*0.3);
+            stars.material.opacity=Math.max(0.3,1-sunLight.intensity);
+            celestialSun.position.set(Math.cos(cyclePos)*1200,Math.sin(cyclePos)*1200,0);
+            celestialMoon.position.set(Math.cos(cyclePos+Math.PI)*1200,Math.sin(cyclePos+Math.PI)*1200,0);
 
-            // Lighting
-            const dayFactor = isDay ? Math.max(0, Math.sin(cyclePos)) : 0;
-            sunLight.position.set(Math.cos(cyclePos) * 1000, Math.sin(cyclePos) * 1000, 0);
-            sunLight.intensity = Math.max(0.1, dayFactor + 0.6);
-            ambLight.intensity = Math.max(0.2, (dayFactor + 1) * 0.3);
-            stars.material.opacity = Math.max(0.3, 1 - sunLight.intensity);
-            celestialSun.position.set(Math.cos(cyclePos) * 1200, Math.sin(cyclePos) * 1200, 0);
-            celestialMoon.position.set(Math.cos(cyclePos + Math.PI) * 1200, Math.sin(cyclePos + Math.PI) * 1200, 0);
-
-            // --- Animations ---
-            for (let i = activeAnims.length - 1; i >= 0; i--) {
-                const a = activeAnims[i];
-                a.time += 0.08;
-                if (a.type === 'pop') {
-                    const progress = Math.min(a.time / 0.8, 1);
-                    const bounce = Math.sin(progress * Math.PI) * 0.2 + progress;
-                    const s = Math.min(bounce, 1);
-                    a.obj.scale.set(a.targetXZ * s, a.targetY * s, a.targetXZ * s);
-                    if (progress >= 1) { a.obj.scale.set(a.targetXZ, a.targetY, a.targetXZ); activeAnims.splice(i, 1); }
-                } else if (a.type === 'destroy') {
-                    const s = Math.max(0, 1 - a.time * 1.5);
-                    a.obj.scale.set(s, s, s);
-                    if (s <= 0) { scene.remove(a.obj); activeAnims.splice(i, 1); }
-                } else if (a.type === 'waterSplash') {
-                    // Brief blue pulse
-                    if (a.time > 0.5) activeAnims.splice(i, 1);
-                }
+            // Anims
+            for(let i=activeAnims.length-1;i>=0;i--){const a=activeAnims[i];a.time+=0.08;
+                if(a.type==='pop'){const p=Math.min(a.time/0.8,1);const s=Math.min(Math.sin(p*Math.PI)*0.2+p,1);a.obj.scale.set(a.targetXZ*s,a.targetY*s,a.targetXZ*s);if(p>=1){a.obj.scale.set(a.targetXZ,a.targetY,a.targetXZ);activeAnims.splice(i,1);}}
+                else if(a.type==='destroy'){const s=Math.max(0,1-a.time*1.5);a.obj.scale.set(s,s,s);if(s<=0){scene.remove(a.obj);activeAnims.splice(i,1);}}
             }
 
-            // --- Crop bob for harvestable ---
-            cropMeshes.forEach(cm => {
-                if (cm.userData.stage >= 3) {
-                    const bob = Math.sin(worldTime * 800 + cm.id) * 0.05;
-                    if (cm.children[cm.children.length - 1]) {
-                        cm.children[cm.children.length - 1].position.y = 1.1 + bob;
-                    }
-                }
-            });
+            // Crop bob
+            cropMeshes.forEach(cm=>{if(cm.userData.stage>=3&&cm.children.length>1){cm.children[cm.children.length-1].position.y=1.1+Math.sin(worldTime*800)*0.05;}});
 
-            // --- Creatures ---
-            creatures.forEach(s => {
-                s.userData.jumpTime += 0.05;
-                const hop = Math.sin(s.userData.jumpTime * 3);
-                const hopHeight = Math.max(0, hop) * 0.6;
-                const targetPos = s.userData.offset.clone()
-                    .multiplyScalar(s.userData.planet.userData.radius + 0.6 + hopHeight)
-                    .add(s.userData.planet.position);
-                s.position.lerp(targetPos, 0.2);
-                s.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), s.userData.offset);
-                const stretch = 1 + Math.max(0, hop) * 0.3;
-                const squish = 1 - Math.max(0, hop) * 0.15;
-                s.scale.set(squish, stretch, squish);
-                if (Math.random() > 0.998) { playSFX('baaa'); showBaaaBubble(s.position); }
-            });
+            // Creatures
+            creatures.forEach(s=>{s.userData.jumpTime+=0.05;const hop=Math.sin(s.userData.jumpTime*3);const hh=Math.max(0,hop)*0.6;s.position.lerp(s.userData.offset.clone().multiplyScalar(s.userData.planet.userData.radius+0.6+hh).add(s.userData.planet.position),0.2);s.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),s.userData.offset);s.scale.set(1-Math.max(0,hop)*0.15,1+Math.max(0,hop)*0.3,1-Math.max(0,hop)*0.15);if(Math.random()>0.998){playSFX('baaa');showBaaaBubble(s.position);}});
+            weeds.forEach(w=>{w.userData.phase+=0.05;const s=1+Math.sin(w.userData.phase)*0.1;w.scale.set(s,s,s);});
 
-            // --- Weeds ---
-            weeds.forEach(w => { w.userData.phase += 0.05; const s = 1 + Math.sin(w.userData.phase) * 0.1; w.scale.set(s, s, s); });
+            // Planet switch
+            let closest=currentPlanet,dMin=Infinity;
+            planets.forEach(p=>{const d=player.position.distanceTo(p.position);if(d<dMin){dMin=d;closest=p;}});
+            if(closest!==currentPlanet){currentPlanet=closest;document.getElementById('planet-name').innerText=currentPlanet.userData.name;}
 
-            // --- Planet switching ---
-            let closest = currentPlanet, dMin = Infinity;
-            planets.forEach(p => { const d = player.position.distanceTo(p.position); if (d < dMin) { dMin = d; closest = p; } });
-            if (closest !== currentPlanet) {
-                currentPlanet = closest;
-                document.getElementById('planet-name').innerText = currentPlanet.userData.name;
-            }
-
-            // --- Physics ---
-            const up = player.position.clone().sub(currentPlanet.position).normalize();
-            const distToSurface = player.position.distanceTo(currentPlanet.position) - currentPlanet.userData.radius;
-            if (distToSurface <= 0.1 && velocity.dot(up) <= 0) {
-                isGrounded = true; velocity.set(0, 0, 0);
-                player.position.copy(up.clone().multiplyScalar(currentPlanet.userData.radius).add(currentPlanet.position));
-            } else {
-                isGrounded = false; velocity.addScaledVector(up, -0.015);
-            }
+            // Physics
+            const up=player.position.clone().sub(currentPlanet.position).normalize();
+            const dSurf=player.position.distanceTo(currentPlanet.position)-currentPlanet.userData.radius;
+            if(dSurf<=0.1&&velocity.dot(up)<=0){isGrounded=true;velocity.set(0,0,0);player.position.copy(up.clone().multiplyScalar(currentPlanet.userData.radius).add(currentPlanet.position));}
+            else{isGrounded=false;velocity.addScaledVector(up,-0.015);}
             player.position.add(velocity);
 
-            // --- Movement ---
-            let mX = 0, mY = 0;
-            if (controls.L.active) {
-                const dx = controls.L.curr.x - controls.L.origin.x;
-                const dy = controls.L.curr.y - controls.L.origin.y;
-                if (Math.hypot(dx, dy) > STICK_DEADZONE) {
-                    mX = Math.max(-1, Math.min(1, dx / STICK_MAX));
-                    mY = Math.max(-1, Math.min(1, dy / STICK_MAX));
-                }
+            // Movement (walk / sprint)
+            let mX=0, mY=0;
+            if(controls.L.active){
+                const dx=controls.L.curr.x-controls.L.origin.x, dy=controls.L.curr.y-controls.L.origin.y;
+                if(Math.hypot(dx,dy)>STICK_DEADZONE){mX=Math.max(-1,Math.min(1,dx/STICK_MAX));mY=Math.max(-1,Math.min(1,dy/STICK_MAX));}
             } else {
-                if (controls.keys['KeyA']) mX = -1;
-                if (controls.keys['KeyD']) mX = 1;
-                if (controls.keys['KeyW']) mY = -1;
-                if (controls.keys['KeyS']) mY = 1;
-                if (controls.keys['Space']) handleJump();
+                if(controls.keys['KeyA'])mX=-1; if(controls.keys['KeyD'])mX=1;
+                if(controls.keys['KeyW'])mY=-1; if(controls.keys['KeyS'])mY=1;
+                if(controls.keys['Space'])handleJump();
             }
-            if (isGrounded && (mX !== 0 || mY !== 0)) {
-                const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(player.quaternion);
-                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(player.quaternion);
-                player.position.addScaledVector(fwd, -mY * 0.25);
-                player.position.addScaledVector(right, -mX * 0.25);
+            const speed = isSprinting ? SPRINT_SPEED : WALK_SPEED;
+            if(isGrounded&&(mX!==0||mY!==0)){
+                const fwd=new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);
+                const right=new THREE.Vector3(1,0,0).applyQuaternion(player.quaternion);
+                player.position.addScaledVector(fwd,-mY*speed);
+                player.position.addScaledVector(right,-mX*speed);
             }
-            player.quaternion.premultiply(
-                new THREE.Quaternion().setFromUnitVectors(
-                    new THREE.Vector3(0, 1, 0).applyQuaternion(player.quaternion), up
-                )
-            );
+            player.quaternion.premultiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0).applyQuaternion(player.quaternion),up));
 
-            // --- Camera ---
-            const camOffset = new THREE.Vector3(0, 0, -1).applyQuaternion(player.quaternion).multiplyScalar(camZoom);
-            const camUp = up.clone().multiplyScalar(6 + camPitch * 8);
-            const camPos = player.position.clone().add(camUp).add(camOffset);
-            camera.position.lerp(camPos, 0.15);
+            // Camera
+            const camOff=new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion).multiplyScalar(camZoom);
+            const camUp=up.clone().multiplyScalar(6+camPitch*8);
+            camera.position.lerp(player.position.clone().add(camUp).add(camOff),0.15);
             camera.lookAt(player.position.clone().add(up.clone().multiplyScalar(2)));
             camera.up.copy(up);
 
-            // --- Jump line ---
-            targetPlanet = null; jumpLine.visible = false;
-            const playerFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(player.quaternion);
-            planets.forEach(p => {
-                if (p === currentPlanet) return;
-                const toP = p.position.clone().sub(player.position).normalize();
-                if (playerFwd.dot(toP) > 0.85) {
-                    targetPlanet = p; jumpLine.visible = true;
-                    const mid = player.position.clone().add(p.position).multiplyScalar(0.5).add(up.clone().multiplyScalar(10));
-                    const curve = new THREE.QuadraticBezierCurve3(player.position, mid, p.position);
-                    jumpLine.geometry.setFromPoints(curve.getPoints(20));
-                }
-            });
+            // Jump arc
+            targetPlanet=null; jumpLine.visible=false;
+            const pFwd=new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);
+            planets.forEach(p=>{if(p===currentPlanet)return;const toP=p.position.clone().sub(player.position).normalize();if(pFwd.dot(toP)>0.85){targetPlanet=p;jumpLine.visible=true;const mid=player.position.clone().add(p.position).multiplyScalar(0.5).add(up.clone().multiplyScalar(10));jumpLine.geometry.setFromPoints(new THREE.QuadraticBezierCurve3(player.position,mid,p.position).getPoints(20));}});
 
             renderer.render(scene, camera);
         }
