@@ -20,15 +20,16 @@
         #status { font-size: clamp(12px, 3.2vw, 15px); }
         
         /* ARCHED CELESTIAL HUD */
-        #cycle-container { position: absolute; top: 118px; left: 50%; transform: translateX(-50%); width: 200px; height: 50px; z-index: 101; pointer-events: none; }
+        #cycle-container { position: absolute; top: 10px; left: calc(50% + 14px); transform: translateX(-50%); width: 176px; height: 46px; z-index: 101; pointer-events: none; }
         .hud-dot { position: absolute; background: rgba(255,255,255,0.4); border-radius: 50%; }
         #celestial-icon { position: absolute; font-size: 20px; transition: transform 0.1s linear; filter: drop-shadow(0 0 8px orange); margin-left: -10px; margin-top: -10px; }
 
         /* STAMINA BAR */
         .stat-bar { display: inline-block; width: 54px; height: 8px; background: rgba(255,255,255,0.25); border-radius: 4px; vertical-align: middle; overflow: hidden; margin-left: 3px; }
         .stat-bar-fill { display: block; height: 100%; background: #ffca28; transition: width 0.25s; }
-        #mp-toggle { position: absolute; top: 16px; right: clamp(62px, 17vw, 74px); width: clamp(38px, 11vw, 46px); height: clamp(38px, 11vw, 46px); background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(17px, 5vw, 20px); z-index: 110; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ddd; cursor: pointer; }
-        #mp-panel { position: absolute; top: 90px; right: 25px; width: 220px; background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.25); border-radius: 14px; padding: 14px; color: white; z-index: 109; display: none; flex-direction: column; gap: 8px; text-align: center; font-size: 13px; }
+        #side-buttons { position: absolute; top: 104px; left: 16px; display: flex; gap: 8px; z-index: 110; }
+        #mp-toggle, #map-toggle { width: clamp(38px, 11vw, 44px); height: clamp(38px, 11vw, 44px); background: rgba(255,255,255,0.94); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(16px, 4.6vw, 19px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); border: 2px solid #ddd; cursor: pointer; }
+        #mp-panel { position: absolute; top: 156px; left: 16px; width: 220px; background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.25); border-radius: 14px; padding: 14px; color: white; z-index: 109; display: none; flex-direction: column; gap: 8px; text-align: center; font-size: 13px; }
         #mp-panel.open { display: flex; }
         .mp-btn { padding: 8px; border-radius: 10px; border: none; background: #ff4081; color: white; font-weight: bold; cursor: pointer; font-size: 13px; }
         .mp-small { flex: 1; padding: 7px 4px; font-size: 11px; background: #5c6bc0; }
@@ -45,7 +46,6 @@
         #store-status { min-height: 16px; opacity: 0.85; font-size: 12px; }
         #store-produce { font-size: 12px; opacity: 0.9; line-height: 1.5; }
 
-        #map-toggle { position: absolute; top: 16px; right: clamp(110px, 31vw, 134px); width: clamp(38px, 11vw, 46px); height: clamp(38px, 11vw, 46px); background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(17px, 5vw, 20px); z-index: 110; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ddd; cursor: pointer; }
         #map-overlay { position: absolute; inset: 0; background: rgba(4,1,10,0.93); z-index: 400; display: none; flex-direction: column; align-items: center; color: white; }
         #map-overlay.open { display: flex; }
         #map-header { width: 100%; padding: 14px 18px; box-sizing: border-box; font-weight: 900; font-size: 16px; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
@@ -54,7 +54,10 @@
         #map-labels { position: absolute; inset: 0; pointer-events: none; }
         .map-label { position: absolute; transform: translate(-50%, 0); font-size: 11px; font-weight: bold; text-align: center; text-shadow: 0 2px 4px #000; white-space: nowrap; }
         .map-label .pct { opacity: 0.85; font-weight: normal; }
-        #map-legend { font-size: 11px; opacity: 0.6; padding: 6px 0; }
+        #map-legend { font-size: 11px; opacity: 0.6; padding: 6px 0; text-align: center; }
+        #map-actions { display: flex; gap: 10px; padding: 4px 0 2px; }
+        #map-actions .mp-btn { min-width: 118px; }
+        .mp-danger { background: #b23c3c; }
         #map-detail { font-size: 12px; padding: 0 18px 18px; text-align: center; min-height: 34px; opacity: 0.95; line-height: 1.5; }
         #mp-join-code { padding: 6px; border-radius: 8px; border: none; text-align: center; text-transform: uppercase; }
         #mp-status { min-height: 16px; opacity: 0.85; }
@@ -97,7 +100,7 @@
     <div id="jump-btn">JUMP</div>
 
     <div id="tool-toggle" onclick="toggleTools()">🎒</div>
-    <div id="mp-toggle" onclick="toggleMP()">👥</div>
+    <div id="side-buttons"><div id="mp-toggle" onclick="toggleMP()">👥</div><div id="map-toggle" onclick="toggleMap()">🗺️</div></div>
     <div id="mp-panel">
         <button class="mp-btn" onclick="hostGame()">Host a Farm</button>
         <div id="mp-room-row" style="display:none">Room code: <b id="mp-room-code"></b></div>
@@ -124,8 +127,6 @@
         <div class="crop-btn" data-crop="pumpkin" onclick="selectCrop('pumpkin')">🎃</div>
     </div>
 
-    <div id="map-toggle" onclick="toggleMap()">🗺️</div>
-
     <div id="store-panel">
         <div class="panel-title">🛒 Star Market</div>
         <div id="store-produce">No produce to sell.</div>
@@ -141,7 +142,8 @@
         <div id="map-header">🌌 Galaxy Map<span id="map-close" onclick="toggleMap()">✕</span></div>
         <canvas id="map-canvas"></canvas>
         <div id="map-labels"></div>
-        <div id="map-legend">Ring = terraform progress · tap a planet to see details</div>
+        <div id="map-legend">Ring = terraform progress · 📍 = you are here · tap a planet for details</div>
+        <div id="map-actions"><button class="mp-btn mp-small" onclick="manualSave()">💾 Save game</button><button class="mp-btn mp-small mp-danger" onclick="resetSave()">🗑️ Reset</button></div>
         <div id="map-detail"></div>
     </div>
 
@@ -361,8 +363,9 @@
         scene.add(stars);
 
         const sunLight = new THREE.DirectionalLight(0xfff5ee, 1.3); sunLight.castShadow = true;
+        const moonLight = new THREE.DirectionalLight(0xaebcff, 0.0);
         const ambLight = new THREE.AmbientLight(0x404060, 0.4);
-        scene.add(sunLight, ambLight);
+        scene.add(sunLight, moonLight, ambLight);
 
         function addOutline(mesh, thickness = 0.1) {
             const outline = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide }));
@@ -372,28 +375,32 @@
         }
 
         // --- PLANETS & PROPS ---
+        function spawnDecoration(p) {
+            const radius = p.userData.radius;
+            for(let i=0; i<p.userData.decoCount; i++) {
+                const normal = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
+                const pos = normal.clone().multiplyScalar(radius).add(p.position);
+                const isTree = Math.random() > 0.4;
+                const mesh = isTree ? 
+                    new THREE.Mesh(new THREE.ConeGeometry(radius*0.07, radius*0.25, 6), new THREE.MeshToonMaterial({color: 0x2e7d32})) :
+                    new THREE.Mesh(new THREE.DodecahedronGeometry(radius*0.06), new THREE.MeshToonMaterial({color: 0x757575}));
+                mesh.position.copy(pos);
+                mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), normal);
+                mesh.userData = { type: 'prop', resource: isTree ? 'wood' : 'stone', planet: p, hitsRemaining: PROP_HITS };
+                mesh.castShadow = true; scene.add(mesh); addOutline(mesh, 0.1); interactables.push(mesh);
+            }
+            for(let i=0; i<8; i++) spawnWeed(p);
+        }
+
         function createPlanet(x, y, z, radius, color, name, deco, startTerraform = 0, skipDecoration = false) {
             const p = new THREE.Mesh(new THREE.IcosahedronGeometry(radius, 6), new THREE.MeshToonMaterial({ color }));
             p.position.set(x, y, z);
-            p.userData = { radius, name, type: 'planet', terraformProgress: startTerraform, baseColor: color };
+            p.userData = { radius, name, type: 'planet', terraformProgress: startTerraform, baseColor: color, decoCount: deco };
             p.receiveShadow = true; scene.add(p); planets.push(p); addOutline(p, 0.02);
+            addAtmosphere(p);
             applyTerraformVisual(p);
 
-            if (!skipDecoration) {
-                for(let i=0; i<deco; i++) {
-                    const normal = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
-                    const pos = normal.clone().multiplyScalar(radius).add(p.position);
-                    const isTree = Math.random() > 0.4;
-                    const mesh = isTree ? 
-                        new THREE.Mesh(new THREE.ConeGeometry(radius*0.07, radius*0.25, 6), new THREE.MeshToonMaterial({color: 0x2e7d32})) :
-                        new THREE.Mesh(new THREE.DodecahedronGeometry(radius*0.06), new THREE.MeshToonMaterial({color: 0x757575}));
-                    mesh.position.copy(pos);
-                    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), normal);
-                    mesh.userData = { type: 'prop', resource: isTree ? 'wood' : 'stone', planet: p, hitsRemaining: PROP_HITS };
-                    mesh.castShadow = true; scene.add(mesh); addOutline(mesh, 0.1); interactables.push(mesh);
-                }
-                for(let i=0; i<8; i++) spawnWeed(p);
-            }
+            if (!skipDecoration) spawnDecoration(p);
             
             for(let i=0; i<3; i++) {
                 const sheep = new THREE.Group();
@@ -409,11 +416,37 @@
             return p;
         }
 
+        function addAtmosphere(p) {
+            const r = p.userData.radius;
+            const inner = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 1.045, 32, 24),
+                new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0, side: THREE.BackSide, depthWrite: false })
+            );
+            const halo = new THREE.Mesh(
+                new THREE.SphereGeometry(r * 1.13, 32, 24),
+                new THREE.MeshBasicMaterial({ color: 0x7fd4ff, transparent: true, opacity: 0, side: THREE.BackSide, depthWrite: false, blending: THREE.AdditiveBlending })
+            );
+            inner.position.copy(p.position); halo.position.copy(p.position);
+            inner.renderOrder = 2; halo.renderOrder = 3;
+            scene.add(inner, halo);
+            p.userData.atmoInner = inner;
+            p.userData.atmoHalo = halo;
+        }
+
         function applyTerraformVisual(p) {
             const t = Math.max(0, Math.min(100, p.userData.terraformProgress)) / 100;
             const lush = new THREE.Color(0x66cc66);
             const base = new THREE.Color(p.userData.baseColor);
             p.material.color.copy(base).lerp(lush, t);
+
+            // atmosphere thickens as the world comes alive: thin dusty haze -> blue sky
+            if (p.userData.atmoInner) {
+                const dusty = new THREE.Color(0xd9a066), sky = new THREE.Color(0x9fe8ff);
+                p.userData.atmoInner.material.opacity = 0.30 * t;
+                p.userData.atmoInner.material.color.copy(dusty).lerp(sky, t);
+                p.userData.atmoHalo.material.opacity = 0.16 * t;
+                p.userData.atmoHalo.material.color.copy(dusty).lerp(sky, t);
+            }
         }
 
         function updateTerraformHUD() {
@@ -484,7 +517,19 @@
             scene.add(shop); interactables.push(shop);
         }
 
-        const hasSave = !!localStorage.getItem('galaxyFarmSave');
+        // Read and validate the save BEFORE building the world. If it's unreadable we must
+        // still generate trees/rocks/weeds, otherwise a bad save leaves totally barren planets.
+        let pendingSave = null;
+        try {
+            const raw = localStorage.getItem('galaxyFarmSave');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && Array.isArray(parsed.planets) && Array.isArray(parsed.mounds)
+                    && Array.isArray(parsed.props) && Array.isArray(parsed.crops)) pendingSave = parsed;
+                else console.warn('Save present but malformed — starting fresh.');
+            }
+        } catch (e) { console.warn('Save unreadable — starting fresh.', e); }
+        const hasSave = !!pendingSave;
 
         const p1 = createPlanet(0, 0, 0, 15, 0x66cc66, "HOME GREEN", 18, 100, hasSave);
         const p2 = createPlanet(100, 40, -100, 10, 0xcc6666, "RED WASTES", 8, 0, hasSave);
@@ -513,7 +558,7 @@
         
         // --- HUD ARCH ---
         const cycleCont = document.getElementById('cycle-container');
-        const ARC = { cx: 100, cy: 44, rx: 85, ry: 34 };
+        const ARC = { cx: 88, cy: 40, rx: 76, ry: 30 };
         for(let i=0; i<=4; i++) {
             const dot = document.createElement('div');
             dot.className = 'hud-dot';
@@ -656,10 +701,11 @@
             return crop;
         }
 
-        function waterCrop(c) {
+        function waterCrop(c, charge = true) {
             if (c.userData.wateredToday) { flashStatus('Already watered!'); return; }
-            if (gameState.stamina.current < 2) { flashStatus('Too tired to water!'); return; }
-            gameState.stamina.current -= 2;
+            // a guest already paid their own stamina; don't bill the host as well
+            if (charge && gameState.stamina.current < 2) { flashStatus('Too tired to water!'); return; }
+            if (charge) gameState.stamina.current -= 2;
             c.userData.wateredToday = true;
             c.userData.wilted = false;
             updateCropVisual(c);
@@ -779,17 +825,44 @@
         }
 
         function saveGame() {
-            try { localStorage.setItem(SAVE_KEY, JSON.stringify(collectSaveData())); }
-            catch (e) { console.warn('Save failed', e); }
+            if (isGuest()) return false; // a guest's view is the host's farm — never overwrite own save
+            try { localStorage.setItem(SAVE_KEY, JSON.stringify(collectSaveData())); return true; }
+            catch (e) { console.warn('Save failed', e); return false; }
         }
+
+        window.manualSave = () => {
+            const ok = saveGame();
+            const el = document.getElementById('map-detail');
+            if (el) el.innerHTML = ok ? '<b>Game saved.</b>' : '<b>Save failed</b> — storage may be blocked (private browsing?).';
+        };
+
+        window.resetSave = () => {
+            const el = document.getElementById('map-detail');
+            if (!window.__resetArmed) {
+                window.__resetArmed = true;
+                if (el) el.innerHTML = '<b>Tap Reset again to erase your galaxy.</b> This cannot be undone.';
+                setTimeout(() => { window.__resetArmed = false; }, 5000);
+                return;
+            }
+            try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+            location.reload();
+        };
+
+        // Autosave: periodically and whenever the page is backgrounded or closed, so
+        // progress isn't lost if the player never makes it to the bed.
+        setInterval(() => { if (!isGuest()) saveGame(); }, 20000);
+        window.addEventListener('pagehide', () => saveGame());
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveGame(); });
 
         function rebuildWorldObjects(data) {
             const vec = (v) => new THREE.Vector3(v.x, v.y, v.z);
             const quat = (q) => new THREE.Quaternion(q.x, q.y, q.z, q.w);
+            const props = data.props || [], weedList = data.weeds || [], moundList = data.mounds || [];
+            const fenceList = data.fences || [], cropList = data.crops || [], planetList = data.planets || [];
 
-            data.planets.forEach((pd, i) => { if (planets[i]) { planets[i].userData.terraformProgress = pd.terraformProgress; applyTerraformVisual(planets[i]); } });
+            planetList.forEach((pd, i) => { if (planets[i]) { planets[i].userData.terraformProgress = pd.terraformProgress; applyTerraformVisual(planets[i]); } });
 
-            data.props.forEach(pd => {
+            props.forEach(pd => {
                 const planet = planets[pd.planetIdx];
                 if (!planet || pd.hits <= 0) return;
                 const isTree = pd.resource === 'wood';
@@ -801,7 +874,7 @@
                 mesh.castShadow = true; scene.add(mesh); addOutline(mesh, 0.1); interactables.push(mesh);
             });
 
-            data.weeds.forEach(wd => {
+            weedList.forEach(wd => {
                 const planet = planets[wd.planetIdx]; if (!planet) return;
                 const weed = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 4), new THREE.MeshToonMaterial({color: 0xb2ff59}));
                 weed.position.copy(vec(wd.pos)); weed.quaternion.copy(quat(wd.quat));
@@ -810,7 +883,7 @@
             });
 
             const restoredMounds = [];
-            data.mounds.forEach(md => {
+            moundList.forEach(md => {
                 const planet = planets[md.planetIdx]; if (!planet) { restoredMounds.push(null); return; }
                 const mound = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 8), new THREE.MeshToonMaterial({color: DIRT_DRY}));
                 mound.position.copy(vec(md.pos)); mound.quaternion.copy(quat(md.quat));
@@ -820,7 +893,7 @@
                 restoredMounds.push(mound);
             });
 
-            data.fences.forEach(fd => {
+            fenceList.forEach(fd => {
                 const planet = planets[fd.planetIdx]; if (!planet) return;
                 const fence = new THREE.Group();
                 const post = new THREE.Mesh(new THREE.BoxGeometry(0.25,1,0.25), new THREE.MeshToonMaterial({color:0x5d4037}));
@@ -832,7 +905,7 @@
                 scene.add(fence); interactables.push(fence);
             });
 
-            data.crops.forEach(cd => {
+            cropList.forEach(cd => {
                 const mound = restoredMounds[cd.moundIndex]; if (!mound) return;
                 const crop = createCropMesh(cd.cropId);
                 crop.position.copy(mound.position); crop.quaternion.copy(mound.quaternion); crop.translateY(0.35);
@@ -847,21 +920,22 @@
         }
 
         function applySaveData(data) {
-            gameState.day = data.day; gameState.money = data.money;
-            gameState.stamina.current = data.stamina;
-            gameState.inventory = data.inventory;
-            gameState.pendingSale = data.pendingSale;
-            selectCrop(data.selectedCrop);
+            gameState.day = data.day ?? 1;
+            gameState.money = data.money ?? 100;
+            gameState.stamina.current = data.stamina ?? gameState.stamina.max;
+            if (data.inventory) gameState.inventory = data.inventory;
+            if (!gameState.inventory.produce) gameState.inventory.produce = {};
+            gameState.pendingSale = data.pendingSale || {};
+            if (data.selectedCrop && CROP_DEFS[data.selectedCrop]) selectCrop(data.selectedCrop);
             rebuildWorldObjects(data);
-            player.position.set(data.playerPos.x, data.playerPos.y, data.playerPos.z);
+            if (data.playerPos) player.position.set(data.playerPos.x, data.playerPos.y, data.playerPos.z);
             updateInventory();
         }
 
-        function loadGame() {
+        function loadGame(data) {
             try {
-                const raw = localStorage.getItem(SAVE_KEY);
-                if (!raw) return false;
-                applySaveData(JSON.parse(raw));
+                if (!data) return false;
+                applySaveData(data);
                 return true;
             } catch (e) { console.warn('Load failed', e); return false; }
         }
@@ -1014,9 +1088,44 @@
             if (msg.tool === 'deposit') { depositProduce(); return; }
             if (msg.tool === 'sellall') { storeSellAll(); return; }
             if (msg.tool === 'buy') { storeBuy(msg.item); return; }
+            if (msg.tool === 'plow') {
+                const p = planets[msg.planetIdx]; if (!p) return;
+                doPlow(p, new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), new THREE.Vector3(msg.norm.x, msg.norm.y, msg.norm.z), false);
+                return;
+            }
+            if (msg.tool === 'fence') {
+                const p = planets[msg.planetIdx]; if (!p) return;
+                doFence(p, new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), new THREE.Vector3(msg.norm.x, msg.norm.y, msg.norm.z), new THREE.Vector3(msg.from.x, msg.from.y, msg.from.z));
+                return;
+            }
+            if (msg.tool === 'hit') {
+                const target = findNearestOfType(new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), msg.targetType, 1.2);
+                if (!target) return;
+                if (msg.targetType === 'prop') {
+                    target.userData.hitsRemaining--;
+                    if (target.userData.hitsRemaining > 0) {
+                        playSFX('thud');
+                        activeAnims.push({ obj: target, time: 0, type: 'hitflash', baseScale: target.scale.x || 1 });
+                    } else {
+                        target.userData.resource === 'wood' ? gameState.inventory.wood++ : gameState.inventory.stone++;
+                        gainTerraform(target.userData.planet, TERRAFORM_GAIN.clear);
+                        activeAnims.push({ obj: target, time: 0, type: 'destroy' });
+                        interactables.splice(interactables.indexOf(target), 1);
+                        playSFX('pop'); updateInventory();
+                    }
+                } else {
+                    if (msg.targetType === 'fence') gameState.inventory.wood++;
+                    if (msg.targetType === 'weed') gainTerraform(target.userData.planet, TERRAFORM_GAIN.weed);
+                    activeAnims.push({ obj: target, time: 0, type: 'destroy' });
+                    interactables.splice(interactables.indexOf(target), 1);
+                    playSFX('pop'); updateInventory();
+                }
+                broadcastWorldSync();
+                return;
+            }
             const pos = new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z);
             if (msg.tool === 'water') {
-                const c = findNearestOfType(pos, 'crop', 0.6); if (c) waterCrop(c);
+                const c = findNearestOfType(pos, 'crop', 0.6); if (c) waterCrop(c, false);
             } else if (msg.tool === 'harvest') {
                 const c = findNearestOfType(pos, 'crop', 0.6); if (c) harvestCrop(c);
             } else if (msg.tool === 'plant') {
@@ -1070,6 +1179,9 @@
                 sendMPAction({ tool: mature ? 'harvest' : 'water', pos: v3(obj.position) }); return true;
             }
             if (window.activeTool === 'water' && type === 'mound') { flashStatus('Plant a seed first!'); return true; }
+            if (window.activeTool === 'hammer' && (type === 'prop' || type === 'weed' || type === 'fence')) {
+                sendMPAction({ tool: 'hit', pos: v3(obj.position), targetType: type }); return true;
+            }
             if (window.activeTool === 'seed' && type === 'mound' && !obj.userData.hasCrop) {
                 sendMPAction({ tool: 'plant', pos: v3(obj.position), cropId: gameState.selectedCrop }); return true;
             }
@@ -1236,6 +1348,18 @@
                 }
                 holder.userData.billboards = holder.children.filter(c => c.geometry && c.geometry.type === 'RingGeometry');
                 holder.userData.planetRef = p;
+
+                if (p === currentPlanet) {
+                    const pin = new THREE.Mesh(
+                        new THREE.ConeGeometry(r * 0.28, r * 0.6, 4),
+                        new THREE.MeshBasicMaterial({ color: 0xff4081 })
+                    );
+                    pin.position.y = r * 1.75;
+                    pin.userData.baseY = r * 1.75;
+                    pin.rotation.x = Math.PI; // point down at the planet
+                    holder.add(pin);
+                    holder.userData.youPin = pin;
+                }
                 mapGroup.add(holder);
             });
 
@@ -1276,7 +1400,8 @@
                 : pct >= 50 ? 'Next: 75% → 10 plots'
                 : pct >= 25 ? 'Next: 50% → 6 plots'
                 : 'Next: 25% → farmable (3 plots)';
-            el.innerHTML = `<b>${p.userData.name}</b> — ${pct}% terraformed<br>Plots ${plots}/${capTxt} · ${next}`;
+            const here = (p === currentPlanet) ? ' <span style="color:#ff8fb1">· you are here</span>' : '';
+            el.innerHTML = `<b>${p.userData.name}</b> — ${pct}% terraformed${here}<br>Plots ${plots}/${capTxt} · ${next}`;
         }
 
         function updateMapLabels() {
@@ -1298,7 +1423,8 @@
                 el.style.opacity = v.z > 1 ? 0 : 1;
                 const p = h.userData.planetRef;
                 const marks = planetMarkers(p);
-                el.innerHTML = `${p.userData.name}<br><span class="pct">${Math.round(p.userData.terraformProgress)}%${marks ? ' · ' + marks : ''}</span>`;
+                const here = (p === currentPlanet) ? '📍 ' : '';
+                el.innerHTML = `${here}${p.userData.name}<br><span class="pct">${Math.round(p.userData.terraformProgress)}%${marks ? ' · ' + marks : ''}</span>`;
             });
             for (let i = idx; i < holder.children.length; i++) holder.children[i].style.opacity = 0;
         }
@@ -1321,9 +1447,11 @@
                 Math.cos(mapYaw) * Math.cos(mapPitch) * dist
             );
             mapCamera.lookAt(0, 0, 0);
+            const bob = Math.sin(performance.now() * 0.004) * 0.35;
             mapGroup.children.forEach(h => {
                 if (!h.userData.billboards) return;
                 h.userData.billboards.forEach(b => b.quaternion.copy(mapCamera.quaternion));
+                if (h.userData.youPin) h.userData.youPin.position.y = h.userData.youPin.userData.baseY + bob;
             });
             mapRenderer.render(mapScene, mapCamera);
             updateMapLabels();
@@ -1342,6 +1470,51 @@
                 requestAnimationFrame(renderMap);
             }
         };
+
+        function spotBlocked(pos, tool) {
+            const minDist = tool === 'fence' ? 0.5 : 0.85;
+            return interactables.some(i => i.position.distanceTo(pos) < minDist);
+        }
+
+        function doPlow(p, pos, norm, charge = true) {
+            if (spotBlocked(pos, 'plow')) return false;
+            const cap = getPlotCap(p.userData.terraformProgress);
+            if (cap <= 0) { flashStatus('Terraform this planet more first!'); return false; }
+            const currentMounds = interactables.filter(o => o.userData.type === 'mound' && o.userData.planet === p).length;
+            if (currentMounds >= cap) { flashStatus('No room to plow until you terraform further!'); return false; }
+            if (charge && gameState.stamina.current < 3) { flashStatus('Too tired to plow!'); return false; }
+            if (charge) gameState.stamina.current -= 3;
+            const mound = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 8), new THREE.MeshToonMaterial({ color: DIRT_DRY }));
+            mound.position.copy(pos).add(norm.clone().multiplyScalar(0.05));
+            mound.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), norm);
+            mound.userData = { type: 'mound', planet: p, hasCrop: false, cropRef: null };
+            mound.scale.set(0,0,0); scene.add(mound); interactables.push(mound); addOutline(mound, 0.05);
+            activeAnims.push({ obj: mound, time: 0, targetY: 0.2, targetXZ: 1.0, type: 'pop' });
+            playSFX('pop'); updateInventory();
+            gainTerraform(p, TERRAFORM_GAIN.plow);
+            broadcastWorldSync();
+            return true;
+        }
+
+        function doFence(p, pos, norm, lookFrom) {
+            if (spotBlocked(pos, 'fence')) return false;
+            if (gameState.inventory.wood <= 0) { flashStatus('Need wood!'); return false; }
+            gameState.inventory.wood--; updateInventory();
+            const fence = new THREE.Group();
+            const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1, 0.25), new THREE.MeshToonMaterial({color: 0x5d4037}));
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, 0.1), new THREE.MeshToonMaterial({color: 0x795548}));
+            const fa = post.clone(); fa.position.x = -0.6; const fb = post.clone(); fb.position.x = 0.6; rail.position.y = 0.3;
+            fence.add(fa, fb, rail); fence.position.copy(pos);
+            const q = new THREE.Quaternion();
+            const look = lookFrom.clone().sub(pos).projectOnPlane(norm).normalize();
+            const m = new THREE.Matrix4().lookAt(pos, pos.clone().add(look), norm); q.setFromRotationMatrix(m);
+            fence.quaternion.copy(q); fence.userData = { type: 'fence', planet: p };
+            fence.scale.set(0,0,0); scene.add(fence); interactables.push(fence);
+            activeAnims.push({ obj: fence, time: 0, targetY: 1, targetXZ: 1, type: 'pop' });
+            playSFX('thud');
+            broadcastWorldSync();
+            return true;
+        }
 
         // --- INTERACTION ---
         function handleInteraction(x, y) {
@@ -1427,43 +1600,23 @@
                     flashStatus('Already planted!');
                 }
             } else if (pHits[0] && pHits[0].point.distanceTo(player.position) < interactDistance) {
-                if (isGuest()) { flashStatus("Can't do that here yet as a guest."); return; }
                 const p = pHits[0].object;
                 const norm = pHits[0].face.normal.clone().transformDirection(p.matrixWorld).normalize();
                 const pos = norm.clone().multiplyScalar(p.userData.radius).add(p.position);
-                let overlap = false;
-                for(let i of interactables) { if(i.position.distanceTo(pos) < (window.activeTool === 'fence' ? 0.5 : 0.85)) overlap = true; }
-                if (!overlap) {
+                if (isGuest()) {
                     if (window.activeTool === 'plow') {
-                        const cap = getPlotCap(p.userData.terraformProgress);
-                        if (cap <= 0) { flashStatus('Terraform this planet more first!'); return; }
-                        const currentMounds = interactables.filter(o => o.userData.type === 'mound' && o.userData.planet === p).length;
-                        if (currentMounds >= cap) { flashStatus('No room to plow until you terraform further!'); return; }
                         if (gameState.stamina.current < 3) { flashStatus('Too tired to plow!'); return; }
-                        gameState.stamina.current -= 3;
-                        const mound = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 8), new THREE.MeshToonMaterial({ color: DIRT_DRY }));
-                        mound.position.copy(pos).add(norm.clone().multiplyScalar(0.05));
-                        mound.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), norm);
-                        mound.userData = { type: 'mound', planet: p, hasCrop: false, cropRef: null };
-                        mound.scale.set(0,0,0); scene.add(mound); interactables.push(mound); addOutline(mound, 0.05);
-                        activeAnims.push({ obj: mound, time: 0, targetY: 0.2, targetXZ: 1.0, type: 'pop' }); playSFX('pop'); updateInventory();
-                        gainTerraform(p, TERRAFORM_GAIN.plow);
-                        broadcastWorldSync();
-                    } else if (window.activeTool === 'fence' && gameState.inventory.wood > 0) {
-                        gameState.inventory.wood--; updateInventory();
-                        const fence = new THREE.Group();
-                        const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1, 0.25), new THREE.MeshToonMaterial({color: 0x5d4037}));
-                        const rail = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, 0.1), new THREE.MeshToonMaterial({color: 0x795548}));
-                        const p1 = post.clone(); p1.position.x = -0.6; const p2 = post.clone(); p2.position.x = 0.6; rail.position.y = 0.3;
-                        fence.add(p1, p2, rail); fence.position.copy(pos);
-                        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), norm);
-                        const look = player.position.clone().sub(pos).projectOnPlane(norm).normalize();
-                        const m = new THREE.Matrix4().lookAt(pos, pos.clone().add(look), norm); q.setFromRotationMatrix(m);
-                        fence.quaternion.copy(q); fence.userData = { type: 'fence', planet: p };
-                        fence.scale.set(0,0,0); scene.add(fence); interactables.push(fence);
-                        activeAnims.push({ obj: fence, time: 0, targetY: 1, targetXZ: 1, type: 'pop' }); playSFX('thud');
+                        gameState.stamina.current -= 3; updateInventory();
+                        sendMPAction({ tool: 'plow', pos: v3(pos), norm: v3(norm), planetIdx: planets.indexOf(p) });
+                    } else if (window.activeTool === 'fence') {
+                        sendMPAction({ tool: 'fence', pos: v3(pos), norm: v3(norm), planetIdx: planets.indexOf(p), from: v3(player.position) });
+                    } else {
+                        flashStatus('Nothing to do there.');
                     }
+                    return;
                 }
+                if (window.activeTool === 'plow') doPlow(p, pos, norm);
+                else if (window.activeTool === 'fence') doFence(p, pos, norm, player.position);
             }
         }
 
@@ -1485,7 +1638,12 @@
             setTimeout(() => { bubble.style.opacity = 0; setTimeout(() => bubble.remove(), 500); }, 1000);
         }
 
-        if (hasSave) loadGame();
+        if (pendingSave && !loadGame(pendingSave)) {
+            // Load failed after we'd already skipped world generation — repopulate so the
+            // player doesn't end up on completely barren planets.
+            console.warn('Regenerating world after failed load.');
+            planets.forEach(p => spawnDecoration(p));
+        }
         updateTerraformHUD();
         updateInventory();
 
@@ -1503,15 +1661,28 @@
             const hudAngle = (cyclePos % Math.PI);
             icon.style.left = (ARC.cx - Math.cos(hudAngle) * ARC.rx) + 'px';
             icon.style.top = (ARC.cy - Math.sin(hudAngle) * ARC.ry) + 'px';
-            const isDay = Math.sin(sunAngle) > -0.2;
+            const sunHeight = Math.sin(sunAngle);
+            // smooth twilight ramp: 0 = full night, 1 = full day
+            const daylight = Math.max(0, Math.min(1, (sunHeight + 0.25) / 0.5));
+            const isDay = sunHeight > -0.05;
             icon.innerText = isDay ? '☀️' : '🌙';
-            icon.style.filter = isDay ? 'drop-shadow(0 0 8px orange)' : 'drop-shadow(0 0 8px #fff)';
+            icon.style.filter = isDay ? 'drop-shadow(0 0 8px orange)' : 'drop-shadow(0 0 8px #cfd8ff)';
 
-            const dayFactor = isDay ? Math.max(0, Math.sin(sunAngle)) : 0;
             sunLight.position.set(Math.cos(sunAngle)*1000, Math.sin(sunAngle)*1000, 0);
-            sunLight.intensity = Math.max(0.1, dayFactor + 0.6);
-            ambLight.intensity = Math.max(0.2, (dayFactor + 1) * 0.3);
-            stars.material.opacity = Math.max(0.5, 1 - sunLight.intensity);
+            sunLight.intensity = 0.05 + daylight * 1.30;
+            // warm low sun at dawn/dusk, neutral at midday
+            sunLight.color.setHex(daylight > 0.55 ? 0xfff5ee : 0xffb877);
+
+            moonLight.position.set(Math.cos(moonAngle)*1000, Math.sin(moonAngle)*1000, 0);
+            moonLight.intensity = (1 - daylight) * 0.42;
+
+            ambLight.intensity = 0.13 + daylight * 0.50;
+            ambLight.color.setRGB(0.18 + daylight*0.07, 0.20 + daylight*0.05, 0.42 - daylight*0.04);
+
+            // The skybox is an unlit material, so it must be dimmed manually or midnight
+            // looks exactly as bright as noon.
+            nebMat.color.setScalar(0.22 + daylight * 0.78);
+            stars.material.opacity = Math.max(0.25, 1 - daylight * 0.85);
 
             celestialSun.position.set(Math.cos(sunAngle)*1200, Math.sin(sunAngle)*1200, 0);
             celestialMoon.position.set(Math.cos(moonAngle)*1200, Math.sin(moonAngle)*1200, 0);
