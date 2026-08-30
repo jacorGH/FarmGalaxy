@@ -7,30 +7,55 @@
     <link rel="icon" href="icon.png">
     <link rel="apple-touch-icon" href="icon.png">
     <style>
-        body { margin: 0; overflow: hidden; background: #05010a; touch-action: none; font-family: 'Segoe UI', sans-serif; user-select: none; -webkit-user-select: none; }
+        body { margin: 0; overflow: hidden; background: #05010a; touch-action: none; font-family: 'Segoe UI', sans-serif; user-select: none; -webkit-user-select: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
         
         /* UI OVERLAY */
         #start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
         #start-btn { padding: 15px 40px; font-size: 24px; background: #ff4081; border: none; border-radius: 50px; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(255, 64, 129, 0.6); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-        #hud { position: absolute; top: 85px; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 100; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
-        #inventory { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 12px; color: white; border: 1px solid rgba(255,255,255,0.2); font-size: 14px; font-weight: bold; pointer-events: none; line-height: 1.6; }
-        #planet-name { font-size: 18px; font-weight: 900; letter-spacing: 1px; display: block; margin-bottom: 5px; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); }
+        #hud { position: absolute; top: 78px; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 100; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        #inventory { position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 12px; color: white; border: 1px solid rgba(255,255,255,0.2); font-size: clamp(10px, 2.9vw, 13px); font-weight: bold; pointer-events: none; line-height: 1.55; }
+        #planet-name { font-size: clamp(13px, 3.6vw, 17px); font-weight: 900; letter-spacing: 1px; display: block; margin-bottom: 4px; background: rgba(0,0,0,0.6); padding: 4px 13px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); }
+        #status { font-size: clamp(12px, 3.2vw, 15px); }
         
         /* ARCHED CELESTIAL HUD */
-        #cycle-container { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 240px; height: 60px; z-index: 101; pointer-events: none; }
+        #cycle-container { position: absolute; top: 118px; left: 50%; transform: translateX(-50%); width: 200px; height: 50px; z-index: 101; pointer-events: none; }
         .hud-dot { position: absolute; background: rgba(255,255,255,0.4); border-radius: 50%; }
-        #celestial-icon { position: absolute; font-size: 24px; transition: transform 0.1s linear; filter: drop-shadow(0 0 8px orange); margin-left: -12px; margin-top: -12px; }
+        #celestial-icon { position: absolute; font-size: 20px; transition: transform 0.1s linear; filter: drop-shadow(0 0 8px orange); margin-left: -10px; margin-top: -10px; }
 
         /* STAMINA BAR */
         .stat-bar { display: inline-block; width: 54px; height: 8px; background: rgba(255,255,255,0.25); border-radius: 4px; vertical-align: middle; overflow: hidden; margin-left: 3px; }
         .stat-bar-fill { display: block; height: 100%; background: #ffca28; transition: width 0.25s; }
-        #mp-toggle { position: absolute; top: 20px; right: 78px; width: 48px; height: 48px; background: #fff; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 21px; z-index: 110; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ddd; cursor: pointer; }
+        #mp-toggle { position: absolute; top: 16px; right: clamp(62px, 17vw, 74px); width: clamp(38px, 11vw, 46px); height: clamp(38px, 11vw, 46px); background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(17px, 5vw, 20px); z-index: 110; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ddd; cursor: pointer; }
         #mp-panel { position: absolute; top: 90px; right: 25px; width: 220px; background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.25); border-radius: 14px; padding: 14px; color: white; z-index: 109; display: none; flex-direction: column; gap: 8px; text-align: center; font-size: 13px; }
         #mp-panel.open { display: flex; }
-        .mp-btn { padding: 8px; border-radius: 10px; border: none; background: #ff4081; color: white; font-weight: bold; cursor: pointer; }
+        .mp-btn { padding: 8px; border-radius: 10px; border: none; background: #ff4081; color: white; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .mp-small { flex: 1; padding: 7px 4px; font-size: 11px; background: #5c6bc0; }
+        #mp-share-row { display: none; gap: 6px; }
+        #mp-link { color: #90caf9; font-size: 11px; text-decoration: none; opacity: 0.9; }
         .mp-or { opacity: 0.6; font-size: 11px; }
+
+        /* STORE + MAP */
+        .panel-title { font-weight: 900; font-size: 15px; margin-bottom: 2px; }
+        #store-panel { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: min(300px, 84vw); background: rgba(12,6,20,0.94); border: 1px solid rgba(255,255,255,0.28); border-radius: 16px; padding: 16px; color: white; z-index: 300; display: none; flex-direction: column; gap: 9px; text-align: center; font-size: 13px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+        #store-panel.open { display: flex; }
+        .store-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .mp-close { background: #455a64; }
+        #store-status { min-height: 16px; opacity: 0.85; font-size: 12px; }
+        #store-produce { font-size: 12px; opacity: 0.9; line-height: 1.5; }
+
+        #map-toggle { position: absolute; top: 16px; right: clamp(110px, 31vw, 134px); width: clamp(38px, 11vw, 46px); height: clamp(38px, 11vw, 46px); background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(17px, 5vw, 20px); z-index: 110; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ddd; cursor: pointer; }
+        #map-overlay { position: absolute; inset: 0; background: rgba(4,1,10,0.93); z-index: 400; display: none; flex-direction: column; align-items: center; color: white; }
+        #map-overlay.open { display: flex; }
+        #map-header { width: 100%; padding: 14px 18px; box-sizing: border-box; font-weight: 900; font-size: 16px; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
+        #map-close { cursor: pointer; font-size: 20px; opacity: 0.8; padding: 0 6px; }
+        #map-canvas { flex: 1; width: 100%; display: block; touch-action: none; }
+        #map-labels { position: absolute; inset: 0; pointer-events: none; }
+        .map-label { position: absolute; transform: translate(-50%, 0); font-size: 11px; font-weight: bold; text-align: center; text-shadow: 0 2px 4px #000; white-space: nowrap; }
+        .map-label .pct { opacity: 0.85; font-weight: normal; }
+        #map-legend { font-size: 11px; opacity: 0.6; padding: 6px 0; }
+        #map-detail { font-size: 12px; padding: 0 18px 18px; text-align: center; min-height: 34px; opacity: 0.95; line-height: 1.5; }
         #mp-join-code { padding: 6px; border-radius: 8px; border: none; text-align: center; text-transform: uppercase; }
         #mp-status { min-height: 16px; opacity: 0.85; }
 
@@ -40,7 +65,7 @@
         
         #jump-btn { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; background: rgba(255, 255, 255, 0.15); border: 4px solid white; border-radius: 50%; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 90; backdrop-filter: blur(4px); cursor: pointer; user-select: none; }
 
-        #tool-toggle { position: absolute; top: 20px; right: 20px; width: 48px; height: 48px; background: #fff; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 22px; z-index: 110; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ddd; cursor: pointer; }
+        #tool-toggle { position: absolute; top: 16px; right: 14px; width: clamp(38px, 11vw, 46px); height: clamp(38px, 11vw, 46px); background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(17px, 5vw, 20px); z-index: 110; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ddd; cursor: pointer; }
         #tool-list { position: absolute; top: 90px; right: 25px; display: flex; flex-direction: column; gap: 12px; z-index: 109; transition: 0.3s; opacity: 0; transform: translateY(-20px); pointer-events: none; }
         #tool-list.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
         .tool { width: 50px; height: 50px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 22px; background: rgba(0,0,0,0.8); color: white; cursor: pointer; }
@@ -76,10 +101,15 @@
     <div id="mp-panel">
         <button class="mp-btn" onclick="hostGame()">Host a Farm</button>
         <div id="mp-room-row" style="display:none">Room code: <b id="mp-room-code"></b></div>
+        <div id="mp-share-row" style="display:none">
+            <button class="mp-btn mp-small" onclick="shareRoom()">📤 Share invite</button>
+            <button class="mp-btn mp-small" onclick="copyRoomCode()">📋 Copy code</button>
+        </div>
         <div class="mp-or">— or —</div>
         <input id="mp-join-code" placeholder="Enter room code" maxlength="6">
         <button class="mp-btn" onclick="joinGame()">Join Farm</button>
         <div id="mp-status"></div>
+        <a id="mp-link" href="#" onclick="openGameLink(event)">Game link ↗</a>
     </div>
     <div id="tool-list">
         <div class="tool active" id="tool-plow" onclick="selectTool('plow')">🚜</div>
@@ -92,6 +122,27 @@
         <div class="crop-btn active" data-crop="turnip" onclick="selectCrop('turnip')">🥬</div>
         <div class="crop-btn" data-crop="tomato" onclick="selectCrop('tomato')">🍅</div>
         <div class="crop-btn" data-crop="pumpkin" onclick="selectCrop('pumpkin')">🎃</div>
+    </div>
+
+    <div id="map-toggle" onclick="toggleMap()">🗺️</div>
+
+    <div id="store-panel">
+        <div class="panel-title">🛒 Star Market</div>
+        <div id="store-produce">No produce to sell.</div>
+        <button class="mp-btn" onclick="storeSellAll()">Sell produce now (90%)</button>
+        <div class="mp-or">— supplies —</div>
+        <div class="store-row"><span>🪓 Wood</span><button class="mp-btn mp-small" onclick="storeBuy('wood')">Buy 20c</button></div>
+        <div class="store-row"><span>🪨 Stone</span><button class="mp-btn mp-small" onclick="storeBuy('stone')">Buy 15c</button></div>
+        <div id="store-status"></div>
+        <button class="mp-btn mp-close" onclick="closeStore()">Close</button>
+    </div>
+
+    <div id="map-overlay">
+        <div id="map-header">🌌 Galaxy Map<span id="map-close" onclick="toggleMap()">✕</span></div>
+        <canvas id="map-canvas"></canvas>
+        <div id="map-labels"></div>
+        <div id="map-legend">Ring = terraform progress · tap a planet to see details</div>
+        <div id="map-detail"></div>
     </div>
 
     <div id="joy-L-base" class="joystick-base"><div id="joy-L-knob" class="joystick-knob"></div></div>
@@ -412,13 +463,36 @@
             scene.add(bin); addOutline(bin, 0.08); interactables.push(bin);
         }
 
+        function spawnShop(planet) {
+            const n = new THREE.Vector3(0.1, 1, 0.2).normalize();
+            const base = n.clone().multiplyScalar(planet.userData.radius).add(planet.position);
+            const shop = new THREE.Group();
+            const walls = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 2.4), new THREE.MeshToonMaterial({ color: 0xfff3e0 }));
+            walls.position.y = 1;
+            const roof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.4, 4), new THREE.MeshToonMaterial({ color: 0xe53935 }));
+            roof.position.y = 2.7; roof.rotation.y = Math.PI / 4;
+            const awning = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.25, 0.9), new THREE.MeshToonMaterial({ color: 0x43a047 }));
+            awning.position.set(0, 1.75, 1.5);
+            const sign = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.7, 0.15), new THREE.MeshToonMaterial({ color: 0xffd54f }));
+            sign.position.set(0, 2.0, 1.28);
+            walls.castShadow = true; roof.castShadow = true;
+            shop.add(walls, roof, awning, sign);
+            addOutline(walls, 0.05); addOutline(roof, 0.05);
+            shop.position.copy(base);
+            shop.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), n);
+            shop.userData = { type: 'shop', planet };
+            scene.add(shop); interactables.push(shop);
+        }
+
         const hasSave = !!localStorage.getItem('galaxyFarmSave');
 
         const p1 = createPlanet(0, 0, 0, 15, 0x66cc66, "HOME GREEN", 18, 100, hasSave);
         const p2 = createPlanet(100, 40, -100, 10, 0xcc6666, "RED WASTES", 8, 0, hasSave);
         const p3 = createPlanet(-60, 60, -70, 16, 0x6666cc, "BLUE CRAGS", 12, 0, hasSave);
         const p4 = createPlanet(90, -50, 90, 8, 0xc1440e, "EMBER ROCK", 9, 0, hasSave);
+        const p5 = createPlanet(-110, -30, 60, 18, 0xb39ddb, "STAR MARKET", 6, 100, hasSave);
         spawnFarmStructures(p1);
+        spawnShop(p5);
         let currentPlanet = p1;
 
         const player = new THREE.Group();
@@ -439,14 +513,15 @@
         
         // --- HUD ARCH ---
         const cycleCont = document.getElementById('cycle-container');
+        const ARC = { cx: 100, cy: 44, rx: 85, ry: 34 };
         for(let i=0; i<=4; i++) {
             const dot = document.createElement('div');
             dot.className = 'hud-dot';
             const size = (i===0||i===4) ? 6 : (i===2 ? 10 : 3);
             dot.style.width = size+'px'; dot.style.height = size+'px';
             const angle = (i/4) * Math.PI;
-            dot.style.left = (120 - Math.cos(angle) * 100 - size/2) + 'px';
-            dot.style.top = (50 - Math.sin(angle) * 40 - size/2) + 'px';
+            dot.style.left = (ARC.cx - Math.cos(angle) * ARC.rx - size/2) + 'px';
+            dot.style.top = (ARC.cy - Math.sin(angle) * ARC.ry - size/2) + 'px';
             cycleCont.appendChild(dot);
         }
 
@@ -472,6 +547,7 @@
         window.addEventListener('wheel', (e) => camZoom = Math.max(8, Math.min(45, camZoom + e.deltaY * 0.02)));
 
         renderer.domElement.addEventListener('mousedown', (e) => {
+            if (mapOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (document.pointerLockElement !== renderer.domElement && !/Android|iPhone/i.test(navigator.userAgent)) {
                 renderer.domElement.requestPointerLock();
             } else { handleInteraction(e.clientX, e.clientY); }
@@ -486,9 +562,11 @@
         });
 
         window.addEventListener('touchstart', (e) => {
+            // UI overlays swallow input entirely — no joysticks, no world interaction behind them
+            if (mapOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (e.touches.length === 2) initialPinchDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
             for(let t of e.changedTouches) {
-                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
+                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.closest('#mp-toggle') || t.target.closest('#mp-panel') || t.target.closest('#map-toggle') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
                     if(t.target.id === 'jump-btn') handleJump(); continue;
                 }
                 const x = t.clientX, y = t.clientY;
@@ -795,19 +873,49 @@
         const guestConns = new Map();      // host side: peerId -> DataConnection
         const remotePlayers = new Map();   // both sides: peerId -> { mesh }
         let lastMoveSent = 0;
+        let currentRoomCode = '';
+
+        // Built from wherever the page is actually served, so it's correct on GitHub Pages
+        // and on localhost without needing to hardcode a URL.
+        function gameUrl() { return location.origin + location.pathname; }
+        function inviteText() {
+            return `Come farm my galaxy! Open ${gameUrl()} , tap 👥 , and join with room code: ${currentRoomCode}`;
+        }
+
+        window.shareRoom = async () => {
+            if (!currentRoomCode) return;
+            const text = inviteText();
+            try {
+                if (navigator.share) { await navigator.share({ title: 'Galaxy Farm', text }); return; }
+            } catch (e) { if (e && e.name === 'AbortError') return; }
+            try { await navigator.clipboard.writeText(text); mpStatus('Invite copied to clipboard!'); }
+            catch (e) { mpStatus('Copy failed — code is ' + currentRoomCode); }
+        };
+
+        window.copyRoomCode = async () => {
+            if (!currentRoomCode) return;
+            try { await navigator.clipboard.writeText(currentRoomCode); mpStatus('Room code copied!'); }
+            catch (e) { mpStatus('Copy failed — code is ' + currentRoomCode); }
+        };
 
         function shortRoomCode() { return Math.random().toString(36).substring(2, 7).toUpperCase(); }
 
-        function makeRemoteAvatar() {
+        function makeRemoteAvatar(color) {
             const g = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.7, 4, 8), new THREE.MeshToonMaterial({ color: 0x88ccff }));
+            const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.7, 4, 8), new THREE.MeshToonMaterial({ color }));
             body.position.y = 0.8; g.add(body); addOutline(body, 0.1);
             scene.add(g);
             return g;
         }
         function updateRemotePlayer(id, pos, quat) {
             let rp = remotePlayers.get(id);
-            if (!rp) { rp = { mesh: makeRemoteAvatar(), targetPos: new THREE.Vector3(), targetQuat: new THREE.Quaternion() }; remotePlayers.set(id, rp); }
+            if (!rp) {
+                // host shows up gold to guests; guests show up blue to the host
+                const color = (id === 'host') ? 0xffd166 : 0x88ccff;
+                rp = { mesh: makeRemoteAvatar(color), targetPos: new THREE.Vector3(), targetQuat: new THREE.Quaternion() };
+                rp.mesh.position.set(pos.x, pos.y, pos.z);
+                remotePlayers.set(id, rp);
+            }
             rp.targetPos.set(pos.x, pos.y, pos.z);
             rp.targetQuat.set(quat.x, quat.y, quat.z, quat.w);
         }
@@ -818,16 +926,24 @@
 
         function mpStatus(msg) { const el = document.getElementById('mp-status'); if (el) el.innerText = msg; }
 
+        window.openGameLink = async (e) => {
+            e.preventDefault();
+            try { await navigator.clipboard.writeText(gameUrl()); mpStatus('Game link copied!'); }
+            catch (err) { mpStatus(gameUrl()); }
+        };
+
         window.hostGame = () => {
             if (mpPeer) return;
+            isHost = true;
             mpPeer = new Peer(shortRoomCode());
             mpPeer.on('open', (id) => {
+                currentRoomCode = id;
                 document.getElementById('mp-room-code').innerText = id;
                 document.getElementById('mp-room-row').style.display = 'block';
+                document.getElementById('mp-share-row').style.display = 'flex';
                 mpStatus('Waiting for a friend to join...');
             });
             mpPeer.on('connection', (conn) => {
-                isHost = true;
                 guestConns.set(conn.peer, conn);
                 conn.on('open', () => {
                     mpStatus('Friend connected!');
@@ -881,6 +997,7 @@
 
         function handleHostMessage(msg) {
             if (msg.type === 'snapshot') applyNetSnapshot(msg.data);
+            else if (msg.type === 'move') updateRemotePlayer('host', msg.pos, msg.quat);
         }
 
         function findNearestOfType(pos, type, maxDist) {
@@ -895,6 +1012,8 @@
 
         function applyGuestAction(msg) {
             if (msg.tool === 'deposit') { depositProduce(); return; }
+            if (msg.tool === 'sellall') { storeSellAll(); return; }
+            if (msg.tool === 'buy') { storeBuy(msg.item); return; }
             const pos = new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z);
             if (msg.tool === 'water') {
                 const c = findNearestOfType(pos, 'crop', 0.6); if (c) waterCrop(c);
@@ -933,6 +1052,7 @@
         // Guest-side: intercepts water/plant/harvest/deposit and sends them to the host instead
         // of applying locally. Everything else (plow, hammer, fence, sleep) stays host-only for now.
         function handleGuestAction(obj, type) {
+            if (type === 'shop') { openStore(); return true; }
             if (type === 'bed') { flashStatus('Only the farm owner can sleep here.'); return true; }
             if (type === 'bin') { sendMPAction({ tool: 'deposit' }); return true; }
             if (type === 'crop' && obj.userData.stage === 2) { sendMPAction({ tool: 'harvest', pos: v3(obj.position) }); return true; }
@@ -962,6 +1082,267 @@
             if (hostConn && hostConn.open) hostConn.send({ type: 'action', ...action });
         }
 
+        // --- STORE ---
+        const STORE_PRICES = { wood: 20, stone: 15 };
+        const STORE_SELL_RATE = 0.9; // instant cash, slightly under shipping-bin value
+
+        function storeStatus(msg) { const el = document.getElementById('store-status'); if (el) el.innerText = msg; }
+
+        function refreshStorePanel() {
+            const lines = [];
+            let total = 0;
+            for (const id in gameState.inventory.produce) {
+                const qty = gameState.inventory.produce[id];
+                if (qty > 0) {
+                    const val = Math.floor(CROP_DEFS[id].sellPrice * STORE_SELL_RATE) * qty;
+                    total += val;
+                    lines.push(`${CROP_DEFS[id].name} x${qty} — ${val}c`);
+                }
+            }
+            document.getElementById('store-produce').innerHTML =
+                lines.length ? lines.join('<br>') + `<br><b>Total: ${total}c</b>` : 'No produce to sell.';
+        }
+
+        window.openStore = () => {
+            if (document.pointerLockElement) document.exitPointerLock();
+            refreshStorePanel(); storeStatus('');
+            document.getElementById('store-panel').classList.add('open');
+        };
+        window.closeStore = () => document.getElementById('store-panel').classList.remove('open');
+
+        window.storeSellAll = () => {
+            if (isGuest()) { sendMPAction({ tool: 'sellall' }); storeStatus('Sent to the farm owner.'); return; }
+            let earned = 0;
+            for (const id in gameState.inventory.produce) {
+                const qty = gameState.inventory.produce[id];
+                if (qty > 0) { earned += Math.floor(CROP_DEFS[id].sellPrice * STORE_SELL_RATE) * qty; gameState.inventory.produce[id] = 0; }
+            }
+            if (earned === 0) { storeStatus('Nothing to sell.'); return; }
+            gameState.money += earned;
+            playSFX('pop'); updateInventory(); refreshStorePanel();
+            storeStatus(`Sold for ${earned}c!`);
+            broadcastWorldSync();
+        };
+
+        window.storeBuy = (item) => {
+            if (isGuest()) { sendMPAction({ tool: 'buy', item }); storeStatus('Sent to the farm owner.'); return; }
+            const cost = STORE_PRICES[item];
+            if (gameState.money < cost) { storeStatus(`Need ${cost}c.`); return; }
+            gameState.money -= cost;
+            gameState.inventory[item]++;
+            playSFX('thud'); updateInventory();
+            storeStatus(`Bought 1 ${item}.`);
+            broadcastWorldSync();
+        };
+
+        // --- GALAXY MAP (separate mini 3D scene, only renders while open) ---
+        let mapRenderer = null, mapScene = null, mapCamera = null, mapGroup = null;
+        let mapOpen = false, mapPickables = [], mapSelected = null;
+        let mapYaw = 0.6, mapPitch = 0.35, mapDrag = null, mapAutoSpin = true;
+
+        function mapPlanetColor(p) {
+            const t = Math.max(0, Math.min(100, p.userData.terraformProgress)) / 100;
+            return new THREE.Color(p.userData.baseColor).lerp(new THREE.Color(0x66cc66), t);
+        }
+
+        function planetMarkers(p) {
+            const marks = [];
+            if (interactables.some(o => o.userData.type === 'bed' && nearestPlanetTo(o.position) === p)) marks.push('🏠');
+            if (interactables.some(o => o.userData.type === 'shop' && o.userData.planet === p)) marks.push('🛒');
+            const plots = interactables.filter(o => o.userData.type === 'mound' && o.userData.planet === p).length;
+            if (plots) marks.push('🟫' + plots);
+            const growing = crops.filter(c => c.userData.moundRef && c.userData.moundRef.userData.planet === p).length;
+            if (growing) marks.push('🌱' + growing);
+            return marks.join(' ');
+        }
+
+        function nearestPlanetTo(pos) {
+            let best = null, bd = Infinity;
+            planets.forEach(p => { const d = pos.distanceTo(p.position); if (d < bd) { bd = d; best = p; } });
+            return best;
+        }
+
+        function initMap() {
+            const canvas = document.getElementById('map-canvas');
+            mapRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            mapRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            mapScene = new THREE.Scene();
+            mapCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+            mapScene.add(new THREE.AmbientLight(0xffffff, 0.75));
+            const key = new THREE.DirectionalLight(0xffffff, 1.1); key.position.set(3, 5, 4);
+            mapScene.add(key);
+            mapGroup = new THREE.Group();
+            mapScene.add(mapGroup);
+
+            // drag to rotate, tap to select
+            const down = (x, y) => { mapDrag = { x, y, moved: false }; mapAutoSpin = false; };
+            const move = (x, y) => {
+                if (!mapDrag) return;
+                const dx = x - mapDrag.x, dy = y - mapDrag.y;
+                if (Math.abs(dx) + Math.abs(dy) > 4) mapDrag.moved = true;
+                mapYaw += dx * 0.008;
+                mapPitch = Math.max(-1.2, Math.min(1.2, mapPitch + dy * 0.008));
+                mapDrag.x = x; mapDrag.y = y;
+            };
+            const up = (x, y) => {
+                if (mapDrag && !mapDrag.moved) mapPick(x, y);
+                mapDrag = null;
+            };
+            canvas.addEventListener('mousedown', e => down(e.clientX, e.clientY));
+            window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+            window.addEventListener('mouseup', e => { if (mapDrag) up(e.clientX, e.clientY); });
+            canvas.addEventListener('touchstart', e => { const t = e.touches[0]; down(t.clientX, t.clientY); e.stopPropagation(); }, { passive: true });
+            canvas.addEventListener('touchmove', e => { const t = e.touches[0]; move(t.clientX, t.clientY); e.stopPropagation(); }, { passive: true });
+            canvas.addEventListener('touchend', e => { const t = e.changedTouches[0]; up(t.clientX, t.clientY); e.stopPropagation(); }, { passive: true });
+        }
+
+        function buildMap() {
+            while (mapGroup.children.length) mapGroup.remove(mapGroup.children[0]);
+            mapPickables = [];
+
+            // scale real galaxy coords down into a tidy map volume
+            const box = new THREE.Box3();
+            planets.forEach(p => box.expandByPoint(p.position));
+            const center = box.getCenter(new THREE.Vector3());
+            const size = Math.max(box.getSize(new THREE.Vector3()).length(), 1);
+            const scale = 22 / size;
+
+            planets.forEach(p => {
+                const holder = new THREE.Group();
+                holder.position.copy(p.position).sub(center).multiplyScalar(scale);
+
+                const r = Math.max(0.75, p.userData.radius * scale * 1.9);
+                const sphere = new THREE.Mesh(
+                    new THREE.IcosahedronGeometry(r, 3),
+                    new THREE.MeshToonMaterial({ color: mapPlanetColor(p) })
+                );
+                sphere.userData.planetRef = p;
+                holder.add(sphere);
+                mapPickables.push(sphere);
+
+                // terraform progress ring (billboarded each frame)
+                const pct = Math.max(0, Math.min(100, p.userData.terraformProgress)) / 100;
+                const track = new THREE.Mesh(
+                    new THREE.RingGeometry(r * 1.35, r * 1.55, 48),
+                    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, side: THREE.DoubleSide })
+                );
+                holder.add(track);
+                if (pct > 0.001) {
+                    const arc = new THREE.Mesh(
+                        new THREE.RingGeometry(r * 1.35, r * 1.55, 48, 1, Math.PI / 2, -pct * Math.PI * 2),
+                        new THREE.MeshBasicMaterial({ color: pct >= 1 ? 0x76ff03 : 0xffd166, side: THREE.DoubleSide })
+                    );
+                    holder.add(arc);
+                }
+                holder.userData.billboards = holder.children.filter(c => c.geometry && c.geometry.type === 'RingGeometry');
+                holder.userData.planetRef = p;
+                mapGroup.add(holder);
+            });
+
+            // faint links between planets to suggest a connected system
+            const linkMat = new THREE.LineBasicMaterial({ color: 0x8888ff, transparent: true, opacity: 0.18 });
+            const home = mapGroup.children[0];
+            mapGroup.children.forEach((h, i) => {
+                if (i === 0) return;
+                const g = new THREE.BufferGeometry().setFromPoints([home.position, h.position]);
+                mapGroup.add(new THREE.Line(g, linkMat));
+            });
+        }
+
+        function mapPick(clientX, clientY) {
+            const canvas = document.getElementById('map-canvas');
+            const rect = canvas.getBoundingClientRect();
+            const m = new THREE.Vector2(
+                ((clientX - rect.left) / rect.width) * 2 - 1,
+                -((clientY - rect.top) / rect.height) * 2 + 1
+            );
+            const ray = new THREE.Raycaster();
+            ray.setFromCamera(m, mapCamera);
+            const hits = ray.intersectObjects(mapPickables, false);
+            mapSelected = hits.length ? hits[0].object.userData.planetRef : null;
+            renderMapDetail();
+        }
+
+        function renderMapDetail() {
+            const el = document.getElementById('map-detail');
+            if (!mapSelected) { el.innerHTML = ''; return; }
+            const p = mapSelected;
+            const pct = Math.round(p.userData.terraformProgress);
+            const cap = getPlotCap(p.userData.terraformProgress);
+            const plots = interactables.filter(o => o.userData.type === 'mound' && o.userData.planet === p).length;
+            const capTxt = cap === Infinity ? 'unlimited' : cap;
+            const next = pct >= 100 ? 'Fully terraformed 🎉'
+                : pct >= 75 ? 'Next: 100% → unlimited plots'
+                : pct >= 50 ? 'Next: 75% → 10 plots'
+                : pct >= 25 ? 'Next: 50% → 6 plots'
+                : 'Next: 25% → farmable (3 plots)';
+            el.innerHTML = `<b>${p.userData.name}</b> — ${pct}% terraformed<br>Plots ${plots}/${capTxt} · ${next}`;
+        }
+
+        function updateMapLabels() {
+            const holder = document.getElementById('map-labels');
+            const canvas = document.getElementById('map-canvas');
+            const rect = canvas.getBoundingClientRect();
+            while (holder.children.length < mapGroup.children.length) {
+                const d = document.createElement('div'); d.className = 'map-label'; holder.appendChild(d);
+            }
+            let idx = 0;
+            mapGroup.children.forEach(h => {
+                if (!h.userData.planetRef) return;
+                const el = holder.children[idx++];
+                const v = h.getWorldPosition(new THREE.Vector3()).project(mapCamera);
+                const x = (v.x + 1) / 2 * rect.width + rect.left;
+                const y = (-v.y + 1) / 2 * rect.height + rect.top;
+                el.style.left = x + 'px';
+                el.style.top = (y + 26) + 'px';
+                el.style.opacity = v.z > 1 ? 0 : 1;
+                const p = h.userData.planetRef;
+                const marks = planetMarkers(p);
+                el.innerHTML = `${p.userData.name}<br><span class="pct">${Math.round(p.userData.terraformProgress)}%${marks ? ' · ' + marks : ''}</span>`;
+            });
+            for (let i = idx; i < holder.children.length; i++) holder.children[i].style.opacity = 0;
+        }
+
+        function renderMap() {
+            if (!mapOpen) return;
+            requestAnimationFrame(renderMap);
+            const canvas = document.getElementById('map-canvas');
+            const w = canvas.clientWidth, h = canvas.clientHeight;
+            if (canvas.width !== w || canvas.height !== h) {
+                mapRenderer.setSize(w, h, false);
+                mapCamera.aspect = w / Math.max(h, 1);
+                mapCamera.updateProjectionMatrix();
+            }
+            if (mapAutoSpin) mapYaw += 0.0022;
+            const dist = 38;
+            mapCamera.position.set(
+                Math.sin(mapYaw) * Math.cos(mapPitch) * dist,
+                Math.sin(mapPitch) * dist,
+                Math.cos(mapYaw) * Math.cos(mapPitch) * dist
+            );
+            mapCamera.lookAt(0, 0, 0);
+            mapGroup.children.forEach(h => {
+                if (!h.userData.billboards) return;
+                h.userData.billboards.forEach(b => b.quaternion.copy(mapCamera.quaternion));
+            });
+            mapRenderer.render(mapScene, mapCamera);
+            updateMapLabels();
+        }
+
+        window.toggleMap = () => {
+            mapOpen = !mapOpen;
+            const ov = document.getElementById('map-overlay');
+            ov.classList.toggle('open', mapOpen);
+            if (mapOpen) {
+                if (document.pointerLockElement) document.exitPointerLock();
+                if (!mapRenderer) initMap();
+                buildMap();
+                mapSelected = null; renderMapDetail();
+                mapAutoSpin = true;
+                requestAnimationFrame(renderMap);
+            }
+        };
+
         // --- INTERACTION ---
         function handleInteraction(x, y) {
             const mouse = new THREE.Vector2();
@@ -989,6 +1370,8 @@
                     } else {
                         sleep();
                     }
+                } else if (type === 'shop') {
+                    openStore();
                 } else if (type === 'bin') {
                     depositProduce();
                 } else if (type === 'crop' && obj.userData.stage === 2) {
@@ -1118,8 +1501,8 @@
             
             const icon = document.getElementById('celestial-icon');
             const hudAngle = (cyclePos % Math.PI);
-            icon.style.left = (120 - Math.cos(hudAngle) * 100) + 'px';
-            icon.style.top = (50 - Math.sin(hudAngle) * 40) + 'px';
+            icon.style.left = (ARC.cx - Math.cos(hudAngle) * ARC.rx) + 'px';
+            icon.style.top = (ARC.cy - Math.sin(hudAngle) * ARC.ry) + 'px';
             const isDay = Math.sin(sunAngle) > -0.2;
             icon.innerText = isDay ? '☀️' : '🌙';
             icon.style.filter = isDay ? 'drop-shadow(0 0 8px orange)' : 'drop-shadow(0 0 8px #fff)';
