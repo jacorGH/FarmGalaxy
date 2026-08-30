@@ -36,6 +36,12 @@
         #mp-share-row { display: none; gap: 6px; }
         #mp-link { color: #90caf9; font-size: 11px; text-decoration: none; opacity: 0.9; }
         .mp-or { opacity: 0.6; font-size: 11px; }
+        #fatal-banner { position: absolute; left: 50%; top: 40%; transform: translateX(-50%); width: min(320px, 86vw); background: rgba(30,8,8,0.95); border: 1px solid #b23c3c; color: #ffdede; border-radius: 12px; padding: 14px 16px; font-size: 13px; line-height: 1.5; z-index: 600; display: none; text-align: center; }
+        #fatal-banner.show { display: block; }
+        #confirm-modal { position: absolute; inset: 0; background: rgba(0,0,0,0.75); z-index: 700; display: none; align-items: center; justify-content: center; }
+        #confirm-modal.open { display: flex; }
+        .confirm-box { width: min(300px, 84vw); background: #140a1e; border: 1px solid rgba(255,255,255,0.28); border-radius: 16px; padding: 18px; color: #fff; text-align: center; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+        #fatal-banner button { margin-top: 10px; padding: 7px 14px; border: none; border-radius: 8px; background: #b23c3c; color: #fff; font-weight: bold; cursor: pointer; }
 
         /* STORE + MAP */
         .panel-title { font-weight: 900; font-size: 15px; margin-bottom: 2px; }
@@ -96,6 +102,15 @@
     <div id="inventory">🪓10 🪨5 💰100<br>📅Day 1 ⚡<span class="stat-bar"><span class="stat-bar-fill" style="width:100%"></span></span><br>🌍 <span class="stat-bar" id="terraform-bar"><span class="stat-bar-fill" id="terraform-fill" style="background:#8bc34a;width:0%"></span></span> <span id="terraform-pct">0%</span></div>
     <div id="hud"><span id="planet-name">HOME GREEN</span>
         <div id="status">🚜 PLOW</div></div>
+    <div id="fatal-banner"></div>
+    <div id="confirm-modal">
+        <div class="confirm-box">
+            <b>Erase your galaxy?</b>
+            <div style="opacity:.85;margin:8px 0 12px;font-size:12px">This deletes your farm, coins and terraform progress. It cannot be undone.</div>
+            <button class="mp-btn mp-danger" onclick="confirmReset()">Yes, erase everything</button>
+            <button class="mp-btn mp-close" onclick="cancelReset()">Cancel</button>
+        </div>
+    </div>
     <div id="crosshair"></div>
     <div id="jump-btn">JUMP</div>
 
@@ -109,7 +124,7 @@
             <button class="mp-btn mp-small" onclick="copyRoomCode()">📋 Copy code</button>
         </div>
         <div class="mp-or">— or —</div>
-        <input id="mp-join-code" placeholder="Enter room code" maxlength="6">
+        <input id="mp-join-code" placeholder="Enter room code" maxlength="8">
         <button class="mp-btn" onclick="joinGame()">Join Farm</button>
         <div id="mp-status"></div>
         <a id="mp-link" href="#" onclick="openGameLink(event)">Game link ↗</a>
@@ -150,6 +165,50 @@
     <div id="joy-L-base" class="joystick-base"><div id="joy-L-knob" class="joystick-knob"></div></div>
     <div id="joy-R-base" class="joystick-base"><div id="joy-R-knob" class="joystick-knob"></div></div>
     
+    <script>
+    // Runs before the game module. Guarantees a way out even if the game never boots.
+    (function () {
+        function wipe() {
+            try {
+                localStorage.removeItem('galaxyFarmSave');
+                localStorage.removeItem('galaxyFarmSave.broken');
+                localStorage.removeItem('galaxyFarmBooting');
+            } catch (e) {}
+        }
+        window.__gfWipe = wipe;
+
+        // Escape hatch: append ?reset=1 to the URL to force a clean start.
+        if (/[?&]reset=1/.test(location.search)) {
+            wipe();
+            location.replace(location.pathname);
+            return;
+        }
+
+        var shown = false;
+        function emergency(detail) {
+            if (shown) return; shown = true;
+            var d = document.createElement('div');
+            d.style.cssText = 'position:fixed;inset:0;background:#120510;color:#ffdede;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;font:14px/1.55 system-ui,sans-serif;text-align:center';
+            d.innerHTML = '<div style="max-width:340px"><b style="font-size:16px">Galaxy Farm could not start</b>'
+                + '<div style="margin:10px 0;opacity:.85">Your save may be damaged. Erasing it will get you back in.</div>'
+                + '<pre id="gf-err" style="white-space:pre-wrap;text-align:left;font-size:11px;opacity:.75;max-height:140px;overflow:auto;background:#00000055;padding:8px;border-radius:8px"></pre>'
+                + '<button id="gf-reset" style="margin-top:12px;padding:10px 18px;border:0;border-radius:10px;background:#b23c3c;color:#fff;font-weight:bold">Erase save and restart</button></div>';
+            document.body.appendChild(d);
+            d.querySelector('#gf-err').textContent = detail || 'No error detail captured.';
+            d.querySelector('#gf-reset').onclick = function () { wipe(); location.replace(location.pathname); };
+        }
+        window.__gfEmergency = emergency;
+
+        window.addEventListener('error', function (e) {
+            if (!window.__gfBooted) emergency((e.message || 'Error') + '\n' + (e.filename || '') + ':' + (e.lineno || ''));
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+            if (!window.__gfBooted) emergency('Unhandled promise rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+        });
+        // Watchdog: if no frame has rendered in 10s, something is badly wrong.
+        setTimeout(function () { if (!window.__gfBooted) emergency('The game did not finish loading within 10 seconds.'); }, 10000);
+    })();
+    </script>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script type="importmap"> { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } } </script>
     <script type="module">
@@ -519,16 +578,41 @@
 
         // Read and validate the save BEFORE building the world. If it's unreadable we must
         // still generate trees/rocks/weeds, otherwise a bad save leaves totally barren planets.
-        let pendingSave = null;
+        const SAVE_VERSION = 2;
+        const BOOT_FLAG = 'galaxyFarmBooting';
+        let pendingSave = null, saveQuarantined = false;
+
+        // If this flag survived from last launch, the previous boot crashed while applying the
+        // save. Quarantine it instead of loading it again and black-screening forever.
+        let crashedLastBoot = false;
+        try { crashedLastBoot = localStorage.getItem(BOOT_FLAG) === '1'; } catch (e) {}
+
         try {
             const raw = localStorage.getItem('galaxyFarmSave');
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                if (parsed && Array.isArray(parsed.planets) && Array.isArray(parsed.mounds)
-                    && Array.isArray(parsed.props) && Array.isArray(parsed.crops)) pendingSave = parsed;
-                else console.warn('Save present but malformed — starting fresh.');
+            if (!raw) {
+                // No save to protect — make sure a stale flag can't quarantine the next one.
+                try { localStorage.removeItem(BOOT_FLAG); } catch (e) {}
+            } else {
+                if (crashedLastBoot) {
+                    saveQuarantined = true;
+                    try {
+                        localStorage.setItem('galaxyFarmSave.broken', raw);
+                        localStorage.removeItem('galaxyFarmSave');
+                        localStorage.removeItem(BOOT_FLAG);
+                    } catch (e) {}
+                    console.warn('Previous launch crashed while loading the save — quarantined it.');
+                } else {
+                    const parsed = JSON.parse(raw);
+                    const okShape = parsed && Array.isArray(parsed.planets) && Array.isArray(parsed.mounds)
+                        && Array.isArray(parsed.props) && Array.isArray(parsed.crops);
+                    if (okShape && (parsed.version || 1) <= SAVE_VERSION) pendingSave = parsed;
+                    else console.warn('Save present but malformed or too new — starting fresh.');
+                }
             }
         } catch (e) { console.warn('Save unreadable — starting fresh.', e); }
+
+        // Mark that we're about to risk applying a save; cleared once a frame renders successfully.
+        if (pendingSave) { try { localStorage.setItem(BOOT_FLAG, '1'); } catch (e) {} }
         const hasSave = !!pendingSave;
 
         const p1 = createPlanet(0, 0, 0, 15, 0x66cc66, "HOME GREEN", 18, 100, hasSave);
@@ -681,8 +765,10 @@
         }
 
         function updateCropVisual(c) {
+            const def = CROP_DEFS[c.userData.cropId];
+            if (!def) { c.material.color.set(0x9e9e8a); return; }
             if (c.userData.wilted) { c.material.color.set(0x9e9e8a); return; }
-            const target = new THREE.Color(CROP_DEFS[c.userData.cropId].color);
+            const target = new THREE.Color(def.color);
             if (c.userData.stage === 0) c.material.color.copy(SPROUT_COLOR);
             else if (c.userData.stage === 1) c.material.color.copy(SPROUT_COLOR).lerp(target, 0.5);
             else c.material.color.copy(target);
@@ -797,7 +883,7 @@
 
         function collectSaveData() {
             const data = {
-                version: 1,
+                version: SAVE_VERSION,
                 day: gameState.day, money: gameState.money, stamina: gameState.stamina.current,
                 inventory: gameState.inventory, pendingSale: gameState.pendingSale, selectedCrop: gameState.selectedCrop,
                 playerPos: v3(player.position),
@@ -837,15 +923,22 @@
         };
 
         window.resetSave = () => {
-            const el = document.getElementById('map-detail');
-            if (!window.__resetArmed) {
-                window.__resetArmed = true;
-                if (el) el.innerHTML = '<b>Tap Reset again to erase your galaxy.</b> This cannot be undone.';
-                setTimeout(() => { window.__resetArmed = false; }, 5000);
-                return;
-            }
-            try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
-            location.reload();
+            // Confirmation lives in its own modal — the old version wrote into the map panel,
+            // which is invisible when reset is triggered from the error banner.
+            document.getElementById('confirm-modal').classList.add('open');
+        };
+
+        window.cancelReset = () => document.getElementById('confirm-modal').classList.remove('open');
+
+        window.confirmReset = () => {
+            // Must clear the boot flag too. Leaving it set caused the *next* save to be
+            // quarantined on the following launch, which looked like "reset didn't work".
+            try {
+                localStorage.removeItem(SAVE_KEY);
+                localStorage.removeItem('galaxyFarmSave.broken');
+                localStorage.removeItem(BOOT_FLAG);
+            } catch (e) {}
+            location.replace(location.pathname + '?fresh=' + Date.now());
         };
 
         // Autosave: periodically and whenever the page is backgrounded or closed, so
@@ -870,7 +963,7 @@
                     ? new THREE.Mesh(new THREE.ConeGeometry(planet.userData.radius*0.07, planet.userData.radius*0.25, 6), new THREE.MeshToonMaterial({color: 0x2e7d32}))
                     : new THREE.Mesh(new THREE.DodecahedronGeometry(planet.userData.radius*0.06), new THREE.MeshToonMaterial({color: 0x757575}));
                 mesh.position.copy(vec(pd.pos)); mesh.quaternion.copy(quat(pd.quat));
-                mesh.userData = { type: 'prop', resource: pd.resource, planet, hitsRemaining: pd.hits };
+                mesh.userData = { type: 'prop', resource: pd.resource, planet, hitsRemaining: (typeof pd.hits === 'number' && pd.hits > 0) ? pd.hits : PROP_HITS };
                 mesh.castShadow = true; scene.add(mesh); addOutline(mesh, 0.1); interactables.push(mesh);
             });
 
@@ -906,6 +999,7 @@
             });
 
             cropList.forEach(cd => {
+                if (!cd || !CROP_DEFS[cd.cropId]) return;           // unknown crop from an older build
                 const mound = restoredMounds[cd.moundIndex]; if (!mound) return;
                 const crop = createCropMesh(cd.cropId);
                 crop.position.copy(mound.position); crop.quaternion.copy(mound.quaternion); crop.translateY(0.35);
@@ -972,7 +1066,7 @@
             catch (e) { mpStatus('Copy failed — code is ' + currentRoomCode); }
         };
 
-        function shortRoomCode() { return Math.random().toString(36).substring(2, 7).toUpperCase(); }
+        function shortRoomCode() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
 
         function makeRemoteAvatar(color) {
             const g = new THREE.Group();
@@ -1006,17 +1100,27 @@
             catch (err) { mpStatus(gameUrl()); }
         };
 
-        window.hostGame = () => {
-            if (mpPeer) return;
-            isHost = true;
-            mpPeer = new Peer(shortRoomCode());
+        // Keep the signalling socket alive aggressively; PeerJS otherwise drops it when the
+        // tab idles or the phone sleeps, which silently kills a room code that's still on screen.
+        const PEER_OPTS = { pingInterval: 3000 };
+        const ROOM_KEY = 'galaxyFarmRoom';
+        let hostRetries = 0, reconnectTimer = null;
+
+        function showRoom(id) {
+            currentRoomCode = id;
+            document.getElementById('mp-room-code').innerText = id;
+            document.getElementById('mp-room-row').style.display = 'block';
+            document.getElementById('mp-share-row').style.display = 'flex';
+        }
+
+        function wireHostPeer() {
             mpPeer.on('open', (id) => {
-                currentRoomCode = id;
-                document.getElementById('mp-room-code').innerText = id;
-                document.getElementById('mp-room-row').style.display = 'block';
-                document.getElementById('mp-share-row').style.display = 'flex';
-                mpStatus('Waiting for a friend to join...');
+                hostRetries = 0;
+                try { localStorage.setItem(ROOM_KEY, id); } catch (e) {}
+                showRoom(id);
+                mpStatus(guestConns.size ? 'Friend connected!' : 'Room open — code stays valid while this tab is open.');
             });
+
             mpPeer.on('connection', (conn) => {
                 guestConns.set(conn.peer, conn);
                 conn.on('open', () => {
@@ -1025,22 +1129,94 @@
                 });
                 conn.on('data', (msg) => handleGuestMessage(conn, msg));
                 conn.on('close', () => { removeRemotePlayer(conn.peer); guestConns.delete(conn.peer); mpStatus('Friend disconnected.'); });
+                conn.on('error', () => {});
             });
-            mpPeer.on('error', (err) => mpStatus('Connection error: ' + err.type));
+
+            // Signalling dropped but the peer object is still usable — reconnect keeps the code.
+            mpPeer.on('disconnected', () => {
+                mpStatus('Reconnecting to keep your code alive...');
+                scheduleReconnect();
+            });
+
+            mpPeer.on('error', (err) => {
+                if (err && err.type === 'unavailable-id') {
+                    // Somebody already holds that code — take a fresh one rather than dying.
+                    try { localStorage.removeItem(ROOM_KEY); } catch (e) {}
+                    if (hostRetries++ < 3) {
+                        try { mpPeer.destroy(); } catch (e) {}
+                        mpPeer = new Peer(shortRoomCode(), PEER_OPTS);
+                        wireHostPeer();
+                        return;
+                    }
+                }
+                if (err && err.type === 'network') { mpStatus('Network hiccup — retrying...'); scheduleReconnect(); return; }
+                mpStatus('Connection error: ' + (err && err.type ? err.type : 'unknown'));
+            });
+        }
+
+        function scheduleReconnect() {
+            if (reconnectTimer || !mpPeer || mpPeer.destroyed) return;
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                try {
+                    if (mpPeer && !mpPeer.destroyed && mpPeer.disconnected) mpPeer.reconnect();
+                } catch (e) { console.warn('reconnect failed', e); }
+            }, 1500);
+        }
+
+        window.hostGame = () => {
+            if (mpPeer) return;
+            isHost = true;
+            // Reuse the previous code across reloads so an invite you already sent still works.
+            let desired = null;
+            try { desired = localStorage.getItem(ROOM_KEY); } catch (e) {}
+            mpPeer = new Peer(desired || shortRoomCode(), PEER_OPTS);
+            wireHostPeer();
+            mpStatus('Opening room...');
         };
 
         window.joinGame = () => {
             const code = document.getElementById('mp-join-code').value.trim().toUpperCase();
             if (!code || mpPeer) return;
-            mpPeer = new Peer(shortRoomCode());
-            mpPeer.on('open', () => {
-                hostConn = mpPeer.connect(code);
-                hostConn.on('open', () => mpStatus('Connected! Loading farm...'));
+            mpPeer = new Peer(shortRoomCode(), PEER_OPTS);
+            let joinAttempts = 0;
+
+            const attempt = () => {
+                joinAttempts++;
+                mpStatus('Connecting to ' + code + (joinAttempts > 1 ? ' (try ' + joinAttempts + ')' : '') + '...');
+                hostConn = mpPeer.connect(code, { reliable: true });
+                hostConn.on('open', () => { joinAttempts = 0; mpStatus('Connected! Loading farm...'); });
                 hostConn.on('data', (msg) => handleHostMessage(msg));
-                hostConn.on('close', () => mpStatus('Disconnected from farm.'));
+                hostConn.on('close', () => {
+                    mpStatus('Lost the farm connection — retrying...');
+                    if (joinAttempts < 6) setTimeout(attempt, 2000);
+                    else mpStatus('Disconnected. Check the code and try again.');
+                });
+                hostConn.on('error', () => {});
+            };
+
+            mpPeer.on('open', attempt);
+            mpPeer.on('disconnected', () => { mpStatus('Reconnecting...'); scheduleReconnect(); });
+            mpPeer.on('error', (err) => {
+                const t = err && err.type;
+                if (t === 'peer-unavailable') {
+                    // Host may not be open yet, or briefly dropped — keep trying for a while.
+                    if (joinAttempts < 6) { mpStatus('Host not answering yet — retrying...'); setTimeout(attempt, 2500); }
+                    else mpStatus('No host found with code ' + code + '.');
+                    return;
+                }
+                if (t === 'network') { mpStatus('Network hiccup — retrying...'); scheduleReconnect(); return; }
+                mpStatus('Connection error: ' + (t || 'unknown'));
             });
-            mpPeer.on('error', (err) => mpStatus('Connection error: ' + err.type));
         };
+
+        // Phones suspend sockets when the app is backgrounded; nudge the peer when we come back.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && mpPeer && !mpPeer.destroyed && mpPeer.disconnected) {
+                mpStatus('Restoring connection...');
+                scheduleReconnect();
+            }
+        });
 
         function isGuest() { return !!hostConn; }
 
@@ -1581,8 +1757,19 @@
                     }
                     broadcastWorldSync();
                 } else if (window.activeTool === 'hammer') {
+                    // permanent fixtures must never be destroyable
+                    if (type === 'bed' || type === 'bin' || type === 'shop') { flashStatus("You can't break that!"); return; }
                     if (type === 'fence') gameState.inventory.wood++;
                     if (type === 'weed') gainTerraform(obj.userData.planet, TERRAFORM_GAIN.weed);
+                    if (type === 'mound' && obj.userData.cropRef) {
+                        // clear the crop with the plot, or it becomes an orphan the save can't restore
+                        const orphan = obj.userData.cropRef;
+                        orphan.userData.moundRef = null;
+                        obj.userData.cropRef = null; obj.userData.hasCrop = false;
+                        const ci = crops.indexOf(orphan); if (ci >= 0) crops.splice(ci, 1);
+                        const ii = interactables.indexOf(orphan); if (ii >= 0) interactables.splice(ii, 1);
+                        activeAnims.push({ obj: orphan, time: 0, type: 'destroy' });
+                    }
                     activeAnims.push({ obj, time: 0, type: 'destroy' });
                     interactables.splice(interactables.indexOf(obj), 1); playSFX('pop'); updateInventory();
                     broadcastWorldSync();
@@ -1638,6 +1825,17 @@
             setTimeout(() => { bubble.style.opacity = 0; setTimeout(() => bubble.remove(), 500); }, 1000);
         }
 
+        function showFatal(msg) {
+            const el = document.getElementById('fatal-banner');
+            if (!el) return;
+            el.innerHTML = msg + '<br><button onclick="resetSave()">Reset save</button>';
+            el.classList.add('show');
+        }
+
+        if (saveQuarantined) {
+            showFatal('Your previous save could not be loaded and has been set aside, so the game started fresh. Sorry about that!');
+        }
+
         if (pendingSave && !loadGame(pendingSave)) {
             // Load failed after we'd already skipped world generation — repopulate so the
             // player doesn't end up on completely barren planets.
@@ -1647,8 +1845,21 @@
         updateTerraformHUD();
         updateInventory();
 
+        let framesRendered = 0, animErrorLogged = false;
         function animate() {
             requestAnimationFrame(animate);
+            try { animateFrame(); } catch (err) {
+                if (!animErrorLogged) {
+                    animErrorLogged = true;
+                    console.error('Frame error:', err);
+                    showFatal('Something went wrong while rendering. Your save may be damaged — open the map and tap Reset if this persists.');
+                }
+                // still present the scene so the player never sees a dead black screen
+                try { renderer.render(scene, camera); } catch (e) {}
+            }
+        }
+
+        function animateFrame() {
             worldTime += DAY_CYCLE_SPEED; 
             const cyclePos = worldTime % (Math.PI * 2);
             // Sun sweeps left -> zenith -> right over the first half of the cycle (day).
@@ -1776,6 +1987,11 @@
                 }
             });
             renderer.render(scene, camera);
+            if (++framesRendered === 3) {
+                // survived startup — the save is safe to load again next launch
+                window.__gfBooted = true;
+                try { localStorage.removeItem(BOOT_FLAG); } catch (e) {}
+            }
         }
         animate();
     </script>
