@@ -29,7 +29,9 @@
         .stat-bar-fill { display: block; height: 100%; background: #ffca28; transition: width 0.25s; }
         #side-buttons { position: absolute; top: 88px; left: 14px; display: flex; gap: 8px; z-index: 110; }
         #terraform-line { margin-top: 2px; }
-        #mp-toggle, #map-toggle { width: clamp(38px, 11vw, 44px); height: clamp(38px, 11vw, 44px); background: rgba(255,255,255,0.94); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(16px, 4.6vw, 19px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); border: 2px solid #ddd; cursor: pointer; }
+        #spin-toggle { display: none; }
+        #spin-toggle.show { display: flex; }
+        #mp-toggle, #map-toggle, #bag-toggle, #spin-toggle { width: clamp(38px, 11vw, 44px); height: clamp(38px, 11vw, 44px); background: rgba(255,255,255,0.94); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(16px, 4.6vw, 19px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); border: 2px solid #ddd; cursor: pointer; }
         #mp-panel { position: absolute; top: 140px; left: 14px; width: 220px; background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.25); border-radius: 14px; padding: 14px; color: white; z-index: 109; display: none; flex-direction: column; gap: 8px; text-align: center; font-size: 13px; }
         #mp-panel.open { display: flex; }
         .mp-btn { padding: 8px; border-radius: 10px; border: none; background: #ff4081; color: white; font-weight: bold; cursor: pointer; font-size: 13px; }
@@ -58,17 +60,18 @@
         #map-overlay.open { display: flex; }
         #map-header { width: 100%; padding: 14px 18px; box-sizing: border-box; font-weight: 900; font-size: 16px; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
         #map-close { cursor: pointer; font-size: 20px; opacity: 0.8; padding: 0 6px; }
-        #map-canvas { flex: 1; width: 100%; display: block; touch-action: none; }
+        #map-canvas { flex: 1 1 auto; min-height: 0; width: 100%; display: block; touch-action: none; }
         #map-labels { position: absolute; inset: 0; pointer-events: none; }
         .map-label { position: absolute; transform: translate(-50%, 0); font-size: 11px; font-weight: bold; text-align: center; text-shadow: 0 2px 4px #000; white-space: nowrap; }
         .map-label .pct { opacity: 0.85; font-weight: normal; }
-        #map-legend { font-size: 11px; opacity: 0.6; padding: 6px 0; text-align: center; }
-        #map-actions { display: flex; gap: 10px; padding: 4px 0 2px; }
+        #map-bottom { flex: 0 0 auto; width: 100%; box-sizing: border-box; padding: 4px 0 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; max-height: 46vh; overflow-y: auto; }
+        #map-legend { font-size: 10px; opacity: 0.55; padding: 4px 0 2px; text-align: center; }
+        #map-actions { display: flex; gap: 10px; padding: 2px 0 0; }
         #map-actions .mp-btn { min-width: 118px; }
         .mp-danger { background: #b23c3c; }
-        #map-detail { font-size: 12px; padding: 0 18px 8px; text-align: center; min-height: 34px; opacity: 0.95; line-height: 1.6; }
+        #map-detail { font-size: 12px; padding: 2px 16px 4px; text-align: center; min-height: 30px; opacity: 0.98; line-height: 1.55; }
         #stage-btn { display: none; margin: 0 auto 6px; padding: 9px 20px; border: none; border-radius: 10px; background: #43a047; color: #fff; font-weight: bold; font-size: 13px; cursor: pointer; }
-        #map-note { font-size: 11px; min-height: 15px; opacity: 0.85; padding: 0 18px 14px; text-align: center; color: #ffe08a; }
+        #map-note { font-size: 11px; min-height: 13px; opacity: 0.9; padding: 0 16px 2px; text-align: center; color: #ffe08a; }
         #mp-join-code { padding: 6px; border-radius: 8px; border: none; text-align: center; text-transform: uppercase; }
         #mp-status { min-height: 16px; opacity: 0.85; }
 
@@ -120,7 +123,7 @@
     <div id="jump-btn">JUMP</div>
 
     <div id="tool-toggle" onclick="toggleTools()">🎒</div>
-    <div id="side-buttons"><div id="mp-toggle" onclick="toggleMP()">👥</div><div id="map-toggle" onclick="toggleMap()">🗺️</div></div>
+    <div id="side-buttons"><div id="mp-toggle" onclick="toggleMP()">👥</div><div id="map-toggle" onclick="toggleMap()">🗺️</div><div id="bag-toggle" onclick="toggleBag()">🧺</div><div id="spin-toggle" onclick="toggleSpin()">↺</div></div>
     <div id="mp-panel">
         <button class="mp-btn" onclick="hostGame()">Host a Farm</button>
         <div id="mp-room-row" style="display:none">Room code: <b id="mp-room-code"></b></div>
@@ -163,15 +166,24 @@
         <button class="mp-btn mp-close" onclick="closeStore()">Close</button>
     </div>
 
+    <div id="bag-panel">
+        <div class="panel-title">🧺 Bag</div>
+        <div id="bag-list"></div>
+        <div id="bag-note"></div>
+        <button class="mp-btn mp-close" onclick="toggleBag()">Close</button>
+    </div>
+
     <div id="map-overlay">
         <div id="map-header">🌌 Galaxy Map<span id="map-close" onclick="toggleMap()">✕</span></div>
         <canvas id="map-canvas"></canvas>
         <div id="map-labels"></div>
-        <div id="map-legend">Ring = terraform progress · 📍 = you are here · tap a planet for details</div>
-        <div id="map-actions"><button class="mp-btn mp-small" onclick="manualSave()">💾 Save game</button><button class="mp-btn mp-small mp-danger" onclick="resetSave()">🗑️ Reset</button></div>
-        <div id="map-detail"></div>
-        <button id="stage-btn" onclick="beginStage()">Begin</button>
-        <div id="map-note"></div>
+        <div id="map-bottom">
+            <div id="map-detail"></div>
+            <button id="stage-btn" onclick="beginStage()">Begin</button>
+            <div id="map-note"></div>
+            <div id="map-legend">Ring = terraform progress · 📍 = you are here · tap a planet for details</div>
+            <div id="map-actions"><button class="mp-btn mp-small" onclick="manualSave()">💾 Save game</button><button class="mp-btn mp-small mp-danger" onclick="resetSave()">🗑️ Reset</button></div>
+        </div>
     </div>
 
     <div id="joy-L-base" class="joystick-base"><div id="joy-L-knob" class="joystick-knob"></div></div>
@@ -387,7 +399,7 @@
             totalHarvests: 0,
             money: 100,
             stamina: { current: 60, max: 60 },
-            inventory: { wood: 10, stone: 5, crystal: 0, produce: {} },
+            inventory: { wood: 10, stone: 5, crystal: 0, berries: 0, produce: {} },
             pendingSale: {},
             selectedCrop: 'turnip',
             tools: { shears: false }        // absent/true = owned; shears must be bought
@@ -620,19 +632,81 @@
             return b;
         }
 
+        // Berries are collected rather than eaten on the spot, so they can be saved for
+        // when you actually need the energy.
         function eatBerry(b) {
-            if (gameState.stamina.current >= gameState.stamina.max) {
-                flashStatus('Already full of energy — leave it for later.');
-                return false;
-            }
-            gameState.stamina.current = Math.min(gameState.stamina.max, gameState.stamina.current + BERRY_STAMINA);
+            gameState.inventory.berries = (gameState.inventory.berries || 0) + 1;
             const bi = berries.indexOf(b); if (bi >= 0) berries.splice(bi, 1);
             const ii = interactables.indexOf(b); if (ii >= 0) interactables.splice(ii, 1);
             activeAnims.push({ obj: b, time: 0, type: 'destroy' });
             playSFX('pop');
-            flashStatus(`+${BERRY_STAMINA} energy!`);
+            flashStatus('Picked an energy berry 🍓');
             updateInventory();
+            if (bagOpen) renderBag();
             return true;
+        }
+
+        const EDIBLE = { berry: BERRY_STAMINA, turnip: 6, tomato: 6, pumpkin: 9 };
+
+        window.eatItem = (id) => {
+            const gain = EDIBLE[id];
+            if (!gain) return;
+            const have = id === 'berry' ? (gameState.inventory.berries || 0)
+                                        : (gameState.inventory.produce[id] || 0);
+            if (have <= 0) { bagNote('None left.'); return; }
+            if (gameState.stamina.current >= gameState.stamina.max) { bagNote('Already at full energy.'); return; }
+            if (id === 'berry') gameState.inventory.berries--;
+            else gameState.inventory.produce[id]--;
+            gameState.stamina.current = Math.min(gameState.stamina.max, gameState.stamina.current + gain);
+            playSFX('pop');
+            bagNote(`+${gain} energy from ${id === 'berry' ? 'a berry' : goodName(id)}.`);
+            updateInventory(); renderBag();
+            broadcastWorldSync();
+        };
+
+        function bagNote(msg) { const el = document.getElementById('bag-note'); if (el) el.innerText = msg; }
+
+        let bagOpen = false;
+        window.toggleBag = () => {
+            bagOpen = !bagOpen;
+            document.getElementById('bag-panel').classList.toggle('open', bagOpen);
+            if (bagOpen) { if (document.pointerLockElement) document.exitPointerLock(); bagNote(''); renderBag(); }
+        };
+
+        function renderBag() {
+            const el = document.getElementById('bag-list');
+            if (!el) return;
+            const rows = [];
+            const mat = [
+                ['🪓 Wood', gameState.inventory.wood],
+                ['🪨 Stone', gameState.inventory.stone],
+                ['💎 Crystal', gameState.inventory.crystal || 0]
+            ].filter(r => r[1] > 0);
+            if (mat.length) {
+                rows.push('<div class="bag-head">Materials</div>');
+                mat.forEach(([label, n]) => rows.push(`<div class="bag-row"><span>${label}</span><b>${n}</b></div>`));
+            }
+
+            const berryCount = gameState.inventory.berries || 0;
+            const goods = [];
+            if (berryCount > 0) goods.push(['berry', '🍓 Energy Berry', berryCount, true]);
+            for (const id in gameState.inventory.produce) {
+                const n = gameState.inventory.produce[id] || 0;
+                if (n > 0) goods.push([id, `${ITEM_ICONS[id] || '•'} ${goodName(id)}`, n, !!EDIBLE[id]]);
+            }
+            if (goods.length) {
+                rows.push('<div class="bag-head">Carrying</div>');
+                goods.forEach(([id, label, n, edible]) => {
+                    const worth = id === 'berry' ? '' : `<span class="bag-worth">${sellPriceOf(id)}c ea</span>`;
+                    const btn = edible ? `<button class="bag-eat" onclick="eatItem('${id}')">Eat +${EDIBLE[id]}</button>` : '';
+                    rows.push(`<div class="bag-row"><span>${label} <b>x${n}</b> ${worth}</span>${btn}</div>`);
+                });
+            }
+
+            if (!rows.length) rows.push('<div class="bag-empty">Your bag is empty.</div>');
+            const st = Math.round(gameState.stamina.current);
+            rows.push(`<div class="bag-head">⚡ Energy ${st}/${gameState.stamina.max}</div>`);
+            el.innerHTML = rows.join('');
         }
 
         // --- SHEEP ---
@@ -1083,6 +1157,7 @@
             if (!el) return;
             // what's in the bag right now, so wool and produce are visible without opening a shop
             const carried = [];
+            if (gameState.inventory.berries > 0) carried.push('🍓' + gameState.inventory.berries);
             for (const id in gameState.inventory.produce) {
                 const n = gameState.inventory.produce[id] || 0;
                 if (n > 0) carried.push(`${ITEM_ICONS[id] || '•'}${n}`);
@@ -1114,6 +1189,18 @@
         const TOOL_LABELS = { hand: '✋ HAND', plow: '⛏️ HOE', seed: '🌱 SEED', water: '💧 WATER', hammer: '🔨 HAMMER', fence: '🚧 FENCE', shears: '✂️ SHEARS' };
         function toolLabel(t) { return TOOL_LABELS[t] || t.toUpperCase(); }
 
+        let handSpin = 1;   // +1 = counter-clockwise, -1 = clockwise
+        window.toggleSpin = () => {
+            handSpin = -handSpin;
+            const b = document.getElementById('spin-toggle');
+            if (b) b.innerText = handSpin > 0 ? '↺' : '↻';
+            flashStatus(handSpin > 0 ? 'Rotating counter-clockwise' : 'Rotating clockwise');
+        };
+        function refreshSpinButton() {
+            const b = document.getElementById('spin-toggle');
+            if (b) b.classList.toggle('show', window.activeTool === 'hand');
+        }
+
         window.selectTool = (t) => {
             if (!toolOwned(t)) {
                 const info = TOOL_SHOP[t];
@@ -1126,6 +1213,7 @@
             document.getElementById('status').innerText = toolLabel(t);
             document.getElementById('tool-list').classList.remove('open');
             document.getElementById('crop-bar').classList.toggle('open', t === 'seed');
+            refreshSpinButton();
         };
         window.selectCrop = (id) => {
             gameState.selectedCrop = id;
@@ -1141,7 +1229,7 @@
         // action ran twice (deposit then "nothing to sell", pick a sheep up then drop it).
         let lastTouchAt = 0;
         renderer.domElement.addEventListener('mousedown', (e) => {
-            if (mapOpen || document.getElementById('store-panel').classList.contains('open')) return;
+            if (mapOpen || bagOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (performance.now() - lastTouchAt < 900) return;      // already handled as a touch
             if (document.pointerLockElement !== renderer.domElement && !/Android|iPhone/i.test(navigator.userAgent)) {
                 renderer.domElement.requestPointerLock();
@@ -1159,10 +1247,10 @@
         window.addEventListener('touchstart', (e) => {
             lastTouchAt = performance.now();
             // UI overlays swallow input entirely — no joysticks, no world interaction behind them
-            if (mapOpen || document.getElementById('store-panel').classList.contains('open')) return;
+            if (mapOpen || bagOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (e.touches.length === 2) initialPinchDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
             for(let t of e.changedTouches) {
-                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.closest('#mp-toggle') || t.target.closest('#mp-panel') || t.target.closest('#map-toggle') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
+                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.closest('#mp-toggle') || t.target.closest('#mp-panel') || t.target.closest('#map-toggle') || t.target.closest('#bag-toggle') || t.target.closest('#spin-toggle') || t.target.closest('#bag-panel') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
                     if(t.target.id === 'jump-btn') handleJump(); continue;
                 }
                 const x = t.clientX, y = t.clientY;
@@ -1561,6 +1649,7 @@
             if (data.inventory) gameState.inventory = data.inventory;
             if (!gameState.inventory.produce) gameState.inventory.produce = {};
             if (typeof gameState.inventory.crystal !== 'number') gameState.inventory.crystal = 0;
+            if (typeof gameState.inventory.berries !== 'number') gameState.inventory.berries = 0;
             gameState.pendingSale = data.pendingSale || {};
             if (data.tools) gameState.tools = Object.assign({ shears: false }, data.tools);
             if (data.selectedCrop && CROP_DEFS[data.selectedCrop]) selectCrop(data.selectedCrop);
@@ -2406,7 +2495,7 @@
             // Swinging one way eventually folds the fence back onto its neighbour. Rather than
             // dead-ending, remember a spin direction and reverse it when the path is blocked,
             // so repeated taps always keep moving.
-            let spin = fence.userData.spin || 1;
+            let spin = (fence.userData.spin !== undefined) ? fence.userData.spin : handSpin;
             let rot = null, target = null;
             for (let attempt = 0; attempt < 2; attempt++) {
                 const tryRot = new THREE.Quaternion().setFromAxisAngle(norm, spin * deg * Math.PI / 180);
@@ -2450,6 +2539,7 @@
         // Hand on a fence: attach it if it's loose, otherwise pivot it around the joint.
         // Tapping repeatedly walks the fence around the corner until it points where you want.
         function handFence(fence) {
+            fence.userData.spin = handSpin;   // follow the player's chosen direction
             const planet = fence.userData.planet;
             const neighbour = nearestFence(fence.position, planet, HAND_SNAP, fence);
             if (neighbour && !isAttachedTo(fence, neighbour)) return snapFence(fence);
