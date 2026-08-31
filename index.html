@@ -14,20 +14,23 @@
         #start-btn { padding: 15px 40px; font-size: 24px; background: #ff4081; border: none; border-radius: 50px; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(255, 64, 129, 0.6); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-        #hud { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 100; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        #hud { position: absolute; top: 104px; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 100; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
         #inventory { position: absolute; top: 14px; left: 14px; background: rgba(0,0,0,0.6); padding: 6px 9px; border-radius: 11px; color: white; border: 1px solid rgba(255,255,255,0.2); font-size: clamp(9px, 2.5vw, 11px); font-weight: bold; pointer-events: none; line-height: 1.5; }
         #planet-name { font-size: clamp(13px, 3.6vw, 17px); font-weight: 900; letter-spacing: 1px; display: block; margin-bottom: 4px; background: rgba(0,0,0,0.6); padding: 4px 13px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); }
         #status { font-size: clamp(12px, 3.2vw, 15px); }
         
         /* ARCHED CELESTIAL HUD */
-        #cycle-container { position: absolute; top: 8px; left: calc(50% + 46px); transform: translateX(-50%); width: 120px; height: 40px; z-index: 101; pointer-events: none; }
+        #cycle-container { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 132px; height: 42px; z-index: 101; pointer-events: none; }
         .hud-dot { position: absolute; background: rgba(255,255,255,0.4); border-radius: 50%; }
         #celestial-icon { position: absolute; font-size: 17px; transition: transform 0.1s linear; filter: drop-shadow(0 0 8px orange); margin-left: -10px; margin-top: -10px; }
 
         /* STAMINA BAR */
         .stat-bar { display: inline-block; width: 38px; height: 7px; background: rgba(255,255,255,0.25); border-radius: 4px; vertical-align: middle; overflow: hidden; margin-left: 3px; }
         .stat-bar-fill { display: block; height: 100%; background: #ffca28; transition: width 0.25s; }
-        #side-buttons { position: absolute; top: 88px; left: 14px; display: flex; gap: 8px; z-index: 110; }
+        #side-rail { position: absolute; top: 98px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 110; align-items: flex-start; }
+        #side-buttons { display: flex; flex-direction: column; gap: 6px; }
+        #side-buttons.collapsed { display: none; }
+        #rail-toggle { width: 26px; height: 26px; border-radius: 8px; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.25); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; cursor: pointer; }
         #terraform-line { margin-top: 2px; }
         #spin-toggle { display: none; }
         #spin-toggle.show { display: flex; }
@@ -39,6 +42,37 @@
         #mp-share-row { display: none; gap: 6px; }
         #mp-link { color: #90caf9; font-size: 11px; text-decoration: none; opacity: 0.9; }
         .mp-or { opacity: 0.6; font-size: 11px; }
+
+        /* RADIAL QUICK MENU — opened by holding a finger on the world */
+        #radial-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 600; display: none; }
+        #radial-backdrop.open { display: block; }
+        #radial { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 610; display: none; }
+        #radial.open { display: block; }
+        .radial-item { position: absolute; width: 46px; height: 46px; margin-left: -23px; margin-top: -23px;
+            border-radius: 50%; background: rgba(255,255,255,0.95); border: 2px solid #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 21px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5); cursor: pointer; transition: transform 0.12s ease-out; }
+        .radial-item.locked { opacity: 0.4; filter: grayscale(1); }
+        .radial-item.current { background: #ffd166; transform: scale(1.12); }
+        .radial-hub { position: absolute; width: 22px; height: 22px; margin-left: -11px; margin-top: -11px;
+            border-radius: 50%; background: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.7); }
+
+        /* BAG — a real window over the game, not a corner box */
+        #bag-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: min(320px, 88vw); max-height: 72vh; overflow-y: auto;
+            background: rgba(14,7,24,0.97); border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 18px; padding: 16px; color: #fff; z-index: 800;
+            display: none; flex-direction: column; gap: 7px; font-size: 13px;
+            box-shadow: 0 18px 60px rgba(0,0,0,0.75); }
+        #bag-panel.open { display: flex; }
+        #bag-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 790; display: none; }
+        #bag-backdrop.open { display: block; }
+        .bag-head { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.55; margin-top: 4px; }
+        .bag-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .bag-worth { opacity: 0.5; font-size: 11px; }
+        .bag-eat { border: none; border-radius: 8px; background: #43a047; color: #fff; font-weight: bold; font-size: 11px; padding: 5px 10px; cursor: pointer; }
+        .bag-empty { opacity: 0.6; text-align: center; padding: 12px 0; }
+        #bag-note { min-height: 15px; font-size: 11px; color: #ffe08a; text-align: center; }
         #fatal-banner { position: absolute; left: 50%; top: 170px; transform: translateX(-50%); width: min(320px, 86vw); background: rgba(30,8,8,0.95); border: 1px solid #b23c3c; color: #ffdede; border-radius: 12px; padding: 14px 16px; font-size: 13px; line-height: 1.5; z-index: 600; display: none; text-align: center; }
         #fatal-banner.show { display: block; }
         #confirm-modal { position: absolute; inset: 0; background: rgba(0,0,0,0.75); z-index: 700; display: none; align-items: center; justify-content: center; }
@@ -123,7 +157,15 @@
     <div id="jump-btn">JUMP</div>
 
     <div id="tool-toggle" onclick="toggleTools()">🎒</div>
-    <div id="side-buttons"><div id="mp-toggle" onclick="toggleMP()">👥</div><div id="map-toggle" onclick="toggleMap()">🗺️</div><div id="bag-toggle" onclick="toggleBag()">🧺</div><div id="spin-toggle" onclick="toggleSpin()">↺</div></div>
+    <div id="side-rail">
+        <div id="rail-toggle" onclick="toggleRail()">‹</div>
+        <div id="side-buttons">
+            <div id="mp-toggle" onclick="toggleMP()">👥</div>
+            <div id="map-toggle" onclick="toggleMap()">🗺️</div>
+            <div id="bag-toggle" onclick="toggleBag()">🧺</div>
+            <div id="spin-toggle" onclick="toggleSpin()">↺</div>
+        </div>
+    </div>
     <div id="mp-panel">
         <button class="mp-btn" onclick="hostGame()">Host a Farm</button>
         <div id="mp-room-row" style="display:none">Room code: <b id="mp-room-code"></b></div>
@@ -166,6 +208,9 @@
         <button class="mp-btn mp-close" onclick="closeStore()">Close</button>
     </div>
 
+    <div id="radial-backdrop" onclick="closeRadial()"></div>
+    <div id="radial"></div>
+    <div id="bag-backdrop" onclick="toggleBag()"></div>
     <div id="bag-panel">
         <div class="panel-title">🧺 Bag</div>
         <div id="bag-list"></div>
@@ -595,21 +640,39 @@
         // --- PLANETS & PROPS ---
         // The mine planet regrows rocks so crystal stays renewable. Only runs once the planet
         // has been Cleared, so respawns can't block that stage from ever completing.
-        function respawnMineRocks() {
+        const TREE_CAP = 6;      // saplings per planet
+        const ROCK_CAP = 8;      // rocks on the mine planet
+
+        function countProps(p, resource) {
+            return interactables.filter(o => o.userData.type === 'prop'
+                && o.userData.planet === p
+                && (!resource || o.userData.resource === resource)).length;
+        }
+
+        function spawnProp(p, resource) {
+            const radius = p.userData.radius;
+            const n = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
+            const pos = n.clone().multiplyScalar(radius).add(p.position);
+            if (interactables.some(o => o.position.distanceTo(pos) < 1.3)) return null;
+            const mesh = resource === 'wood'
+                ? new THREE.Mesh(new THREE.ConeGeometry(radius*0.07, radius*0.25, 6), new THREE.MeshToonMaterial({ color: 0x2e7d32 }))
+                : new THREE.Mesh(new THREE.DodecahedronGeometry(radius*0.06), new THREE.MeshToonMaterial({ color: 0x8d7ba5 }));
+            mesh.position.copy(pos);
+            mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), n);
+            mesh.userData = { type: 'prop', resource, planet: p, hitsRemaining: PROP_HITS };
+            mesh.castShadow = true; scene.add(mesh); addOutline(mesh, 0.1); interactables.push(mesh);
+            return mesh;
+        }
+
+        // Trees regrow everywhere once a planet is Cleared, so wood never runs out; rocks only
+        // regrow on the mine. Gated behind stage >= 1 so regrowth can't block the Cleared stage.
+        function respawnResources() {
             planets.forEach(p => {
-                if (!p.userData.isMine || p.userData.stage < 1) return;
-                const present = interactables.filter(o => o.userData.type === 'prop' && o.userData.planet === p).length;
-                const want = Math.min(2, 8 - present);
-                for (let i = 0; i < want; i++) {
-                    const radius = p.userData.radius;
-                    const n = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
-                    const pos = n.clone().multiplyScalar(radius).add(p.position);
-                    if (interactables.some(o => o.position.distanceTo(pos) < 1.2)) continue;
-                    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(radius*0.06), new THREE.MeshToonMaterial({color: 0x8d7ba5}));
-                    rock.position.copy(pos);
-                    rock.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), n);
-                    rock.userData = { type: 'prop', resource: 'stone', planet: p, hitsRemaining: PROP_HITS };
-                    rock.castShadow = true; scene.add(rock); addOutline(rock, 0.1); interactables.push(rock);
+                if (!isTerraformable(p) || p.userData.stage < 1) return;
+                if (countProps(p, 'wood') < TREE_CAP && Math.random() < 0.7) spawnProp(p, 'wood');
+                if (p.userData.isMine) {
+                    const want = Math.min(2, ROCK_CAP - countProps(p, 'stone'));
+                    for (let i = 0; i < want; i++) spawnProp(p, 'stone');
                 }
             });
         }
@@ -670,6 +733,7 @@
         window.toggleBag = () => {
             bagOpen = !bagOpen;
             document.getElementById('bag-panel').classList.toggle('open', bagOpen);
+            document.getElementById('bag-backdrop').classList.toggle('open', bagOpen);
             if (bagOpen) { if (document.pointerLockElement) document.exitPointerLock(); bagNote(''); renderBag(); }
         };
 
@@ -901,7 +965,8 @@
             if (!fill || !pctEl) return;
             fill.style.width = stagePct(p) + '%';
             const label = isTerraformable(p) ? STAGES[p.userData.stage].name : 'Hub';
-            pctEl.innerText = `${label} ${stagePct(p)}%`;
+            pctEl.innerText = `${stagePct(p)}%`;
+            pctEl.title = label;
         }
 
         // Stage 1 (Cleared) is the only stage that completes purely through labour, so it's
@@ -1156,21 +1221,16 @@
             const el = document.getElementById('inv-lines');
             if (!el) return;
             // what's in the bag right now, so wool and produce are visible without opening a shop
-            const carried = [];
-            if (gameState.inventory.berries > 0) carried.push('🍓' + gameState.inventory.berries);
-            for (const id in gameState.inventory.produce) {
-                const n = gameState.inventory.produce[id] || 0;
-                if (n > 0) carried.push(`${ITEM_ICONS[id] || '•'}${n}`);
-            }
+            // Materials at a glance; produce and berries stay in the bag panel.
             el.innerHTML =
-                `🪓${gameState.inventory.wood} 🪨${gameState.inventory.stone}${crystal ? ' 💎' + crystal : ''} 💰${gameState.money}<br>` +
-                `📅Day ${gameState.day} ⚡<span class="stat-bar"><span class="stat-bar-fill" style="width:${pct}%"></span></span>` +
-                (carried.length ? `<br>🎒 ${carried.join(' ')}` : '');
+                `🪓${gameState.inventory.wood} 🪨${gameState.inventory.stone}${crystal ? ' 💎' + crystal : ''}<br>` +
+                `💰${gameState.money} 📅${gameState.day}<br>` +
+                `⚡<span class="stat-bar"><span class="stat-bar-fill" style="width:${pct}%"></span></span>`;
         }
         
         // --- HUD ARCH ---
         const cycleCont = document.getElementById('cycle-container');
-        const ARC = { cx: 60, cy: 34, rx: 50, ry: 24 };
+        const ARC = { cx: 66, cy: 36, rx: 56, ry: 26 };
         for(let i=0; i<=4; i++) {
             const dot = document.createElement('div');
             dot.className = 'hud-dot';
@@ -1200,6 +1260,13 @@
             const b = document.getElementById('spin-toggle');
             if (b) b.classList.toggle('show', window.activeTool === 'hand');
         }
+
+        window.toggleRail = () => {
+            const list = document.getElementById('side-buttons');
+            const btn = document.getElementById('rail-toggle');
+            const collapsed = list.classList.toggle('collapsed');
+            btn.innerText = collapsed ? '›' : '‹';
+        };
 
         window.selectTool = (t) => {
             if (!toolOwned(t)) {
@@ -1233,8 +1300,13 @@
             if (performance.now() - lastTouchAt < 900) return;      // already handled as a touch
             if (document.pointerLockElement !== renderer.domElement && !/Android|iPhone/i.test(navigator.userAgent)) {
                 renderer.domElement.requestPointerLock();
-            } else { handleInteraction(e.clientX, e.clientY); }
+            } else { beginPress(e.clientX, e.clientY); }
         });
+        renderer.domElement.addEventListener('mouseup', (e) => {
+            if (performance.now() - lastTouchAt < 900) return;
+            endPress(e.clientX, e.clientY);
+        });
+        renderer.domElement.addEventListener('mousemove', (e) => movePress(e.clientX, e.clientY));
 
         document.addEventListener('pointerlockchange', () => document.getElementById('crosshair').style.display = document.pointerLockElement ? 'block' : 'none');
         window.addEventListener('mousemove', (e) => {
@@ -1247,10 +1319,10 @@
         window.addEventListener('touchstart', (e) => {
             lastTouchAt = performance.now();
             // UI overlays swallow input entirely — no joysticks, no world interaction behind them
-            if (mapOpen || bagOpen || document.getElementById('store-panel').classList.contains('open')) return;
+            if (mapOpen || bagOpen || radialOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (e.touches.length === 2) initialPinchDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
             for(let t of e.changedTouches) {
-                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.closest('#mp-toggle') || t.target.closest('#mp-panel') || t.target.closest('#map-toggle') || t.target.closest('#bag-toggle') || t.target.closest('#spin-toggle') || t.target.closest('#bag-panel') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
+                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.closest('#side-rail') || t.target.closest('#radial') || t.target.closest('#radial-backdrop') || t.target.closest('#mp-panel') || t.target.closest('#bag-panel') || t.target.closest('#bag-backdrop') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
                     if(t.target.id === 'jump-btn') handleJump(); continue;
                 }
                 const x = t.clientX, y = t.clientY;
@@ -1264,7 +1336,7 @@
                         const base = document.getElementById('joy-R-base');
                         base.style.display = 'block'; base.style.left = `${x-40}px`; base.style.top = `${y-40}px`;
                     }
-                } else { handleInteraction(x, y); }
+                } else { beginPress(x, y); }
             }
         }, {passive: false});
 
@@ -1281,6 +1353,7 @@
                     const d = Math.min(Math.hypot(dx, dy), 40); const ang = Math.atan2(dy, dx);
                     document.getElementById('joy-L-knob').style.transform = `translate(${Math.cos(ang)*d}px, ${Math.sin(ang)*d}px)`;
                 }
+                movePress(t.clientX, t.clientY);
                 if (controls.R.active && t.identifier === controls.R.id) {
                     const dx = t.clientX - controls.R.curr.x, dy = t.clientY - controls.R.curr.y;
                     player.rotateY(-dx * 0.008); camPitch = Math.max(-0.6, Math.min(0.8, camPitch - dy * 0.008));
@@ -1294,11 +1367,92 @@
 
         window.addEventListener('touchend', (e) => {
             for(let t of e.changedTouches) {
+                if (press) endPress(t.clientX, t.clientY);
                 if (controls.L.active && t.identifier === controls.L.id) { controls.L.active = false; document.getElementById('joy-L-base').style.display = 'none'; }
                 if (controls.R.active && t.identifier === controls.R.id) { controls.R.active = false; document.getElementById('joy-R-base').style.display = 'none'; }
             }
             if (e.touches.length < 2) initialPinchDist = null;
         });
+
+        // --- RADIAL QUICK MENU ---
+        const RADIAL_ITEMS = [
+            { icon: '✋',  tool: 'hand'   },
+            { icon: '⛏️',  tool: 'plow'   },
+            { icon: '🌱',  tool: 'seed'   },
+            { icon: '💧',  tool: 'water'  },
+            { icon: '🔨',  tool: 'hammer' },
+            { icon: '🚧',  tool: 'fence'  },
+            { icon: '✂️',  tool: 'shears' },
+            { icon: '🧺',  act: 'bag'     },
+            { icon: '🗺️',  act: 'map'     },
+            { icon: '👥',  act: 'social'  }
+        ];
+        let radialOpen = false;
+
+        window.closeRadial = () => {
+            radialOpen = false;
+            document.getElementById('radial').classList.remove('open');
+            document.getElementById('radial-backdrop').classList.remove('open');
+        };
+
+        window.radialPick = (i) => {
+            const item = RADIAL_ITEMS[i];
+            closeRadial();
+            if (!item) return;
+            if (item.tool) { selectTool(item.tool); return; }
+            if (item.act === 'bag') toggleBag();
+            else if (item.act === 'map') toggleMap();
+            else if (item.act === 'social') toggleMP();
+        };
+
+        function openRadial(x, y) {
+            if (mapOpen || bagOpen) return;
+            const pad = 96;
+            const cx = Math.max(pad, Math.min(window.innerWidth - pad, x));
+            const cy = Math.max(pad, Math.min(window.innerHeight - pad, y));
+            const host = document.getElementById('radial');
+            const r = 84, n = RADIAL_ITEMS.length;
+            let html = `<div class="radial-hub" style="left:${cx}px;top:${cy}px"></div>`;
+            RADIAL_ITEMS.forEach((it, i) => {
+                const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
+                const ix = cx + Math.cos(a) * r, iy = cy + Math.sin(a) * r;
+                const locked = it.tool && !toolOwned(it.tool);
+                const current = it.tool && it.tool === window.activeTool;
+                html += `<div class="radial-item${locked ? ' locked' : ''}${current ? ' current' : ''}" `
+                      + `style="left:${ix}px;top:${iy}px" onclick="radialPick(${i})">${it.icon}</div>`;
+            });
+            host.innerHTML = html;
+            host.classList.add('open');
+            document.getElementById('radial-backdrop').classList.add('open');
+            radialOpen = true;
+            playSFX('pop');
+        }
+
+        // Hold to open the menu; a quick tap still acts on the world. Because of this the
+        // world action now resolves on release, so a hold doesn't also plow the ground.
+        const HOLD_MS = 380, HOLD_SLOP = 14;
+        let press = null;
+
+        function beginPress(x, y) {
+            if (radialOpen) return;
+            press = { x, y, t: performance.now(), moved: false,
+                      timer: setTimeout(() => { if (press && !press.moved) { openRadial(press.x, press.y); press = null; } }, HOLD_MS) };
+        }
+        function movePress(x, y) {
+            if (!press) return;
+            if (Math.abs(x - press.x) + Math.abs(y - press.y) > HOLD_SLOP) {
+                press.moved = true;
+                clearTimeout(press.timer);
+                press = null;
+            }
+        }
+        function endPress(x, y) {
+            if (!press) return;               // already consumed by the hold
+            clearTimeout(press.timer);
+            const quick = performance.now() - press.t < HOLD_MS;
+            press = null;
+            if (quick && !radialOpen) handleInteraction(x, y);
+        }
 
         // --- CORE LOOP HELPERS ---
         // Messages are queued and each held for a minimum time, so a follow-up can't wipe
@@ -1453,7 +1607,7 @@
             });
 
             advanceTerraformDay();
-            respawnMineRocks();
+            respawnResources();
             growWool();
 
             gameState.stamina.current = Math.round(gameState.stamina.max * frac);
@@ -2163,12 +2317,18 @@
                 if (mapDrag && !mapDrag.moved) mapPick(x, y);
                 mapDrag = null;
             };
-            canvas.addEventListener('mousedown', e => down(e.clientX, e.clientY));
+            canvas.addEventListener('mousedown', e => {
+                if (performance.now() - lastTouchAt < 900) return;   // iOS synthesises this after a touch
+                down(e.clientX, e.clientY);
+            });
             window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
-            window.addEventListener('mouseup', e => { if (mapDrag) up(e.clientX, e.clientY); });
-            canvas.addEventListener('touchstart', e => { const t = e.touches[0]; down(t.clientX, t.clientY); e.stopPropagation(); }, { passive: true });
+            window.addEventListener('mouseup', e => {
+                if (performance.now() - lastTouchAt < 900) { mapDrag = null; return; }
+                if (mapDrag) up(e.clientX, e.clientY);
+            });
+            canvas.addEventListener('touchstart', e => { lastTouchAt = performance.now(); const t = e.touches[0]; down(t.clientX, t.clientY); e.stopPropagation(); }, { passive: true });
             canvas.addEventListener('touchmove', e => { const t = e.touches[0]; move(t.clientX, t.clientY); e.stopPropagation(); }, { passive: true });
-            canvas.addEventListener('touchend', e => { const t = e.changedTouches[0]; up(t.clientX, t.clientY); e.stopPropagation(); }, { passive: true });
+            canvas.addEventListener('touchend', e => { lastTouchAt = performance.now(); const t = e.changedTouches[0]; up(t.clientX, t.clientY); e.stopPropagation(); }, { passive: true });
         }
 
         function buildMap() {
