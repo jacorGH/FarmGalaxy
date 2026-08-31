@@ -14,23 +14,23 @@
         #start-btn { padding: 15px 40px; font-size: 24px; background: #ff4081; border: none; border-radius: 50px; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(255, 64, 129, 0.6); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-        #hud { position: absolute; top: 78px; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 100; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
-        #inventory { position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 12px; color: white; border: 1px solid rgba(255,255,255,0.2); font-size: clamp(10px, 2.9vw, 13px); font-weight: bold; pointer-events: none; line-height: 1.55; }
+        #hud { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 100; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        #inventory { position: absolute; top: 14px; left: 14px; background: rgba(0,0,0,0.6); padding: 6px 9px; border-radius: 11px; color: white; border: 1px solid rgba(255,255,255,0.2); font-size: clamp(9px, 2.5vw, 11px); font-weight: bold; pointer-events: none; line-height: 1.5; }
         #planet-name { font-size: clamp(13px, 3.6vw, 17px); font-weight: 900; letter-spacing: 1px; display: block; margin-bottom: 4px; background: rgba(0,0,0,0.6); padding: 4px 13px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); }
         #status { font-size: clamp(12px, 3.2vw, 15px); }
         
         /* ARCHED CELESTIAL HUD */
-        #cycle-container { position: absolute; top: 10px; left: calc(50% + 14px); transform: translateX(-50%); width: 176px; height: 46px; z-index: 101; pointer-events: none; }
+        #cycle-container { position: absolute; top: 8px; left: calc(50% + 46px); transform: translateX(-50%); width: 120px; height: 40px; z-index: 101; pointer-events: none; }
         .hud-dot { position: absolute; background: rgba(255,255,255,0.4); border-radius: 50%; }
-        #celestial-icon { position: absolute; font-size: 20px; transition: transform 0.1s linear; filter: drop-shadow(0 0 8px orange); margin-left: -10px; margin-top: -10px; }
+        #celestial-icon { position: absolute; font-size: 17px; transition: transform 0.1s linear; filter: drop-shadow(0 0 8px orange); margin-left: -10px; margin-top: -10px; }
 
         /* STAMINA BAR */
-        .stat-bar { display: inline-block; width: 54px; height: 8px; background: rgba(255,255,255,0.25); border-radius: 4px; vertical-align: middle; overflow: hidden; margin-left: 3px; }
+        .stat-bar { display: inline-block; width: 38px; height: 7px; background: rgba(255,255,255,0.25); border-radius: 4px; vertical-align: middle; overflow: hidden; margin-left: 3px; }
         .stat-bar-fill { display: block; height: 100%; background: #ffca28; transition: width 0.25s; }
-        #side-buttons { position: absolute; top: 104px; left: 16px; display: flex; gap: 8px; z-index: 110; }
+        #side-buttons { position: absolute; top: 88px; left: 14px; display: flex; gap: 8px; z-index: 110; }
         #terraform-line { margin-top: 2px; }
         #mp-toggle, #map-toggle { width: clamp(38px, 11vw, 44px); height: clamp(38px, 11vw, 44px); background: rgba(255,255,255,0.94); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(16px, 4.6vw, 19px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); border: 2px solid #ddd; cursor: pointer; }
-        #mp-panel { position: absolute; top: 156px; left: 16px; width: 220px; background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.25); border-radius: 14px; padding: 14px; color: white; z-index: 109; display: none; flex-direction: column; gap: 8px; text-align: center; font-size: 13px; }
+        #mp-panel { position: absolute; top: 140px; left: 14px; width: 220px; background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.25); border-radius: 14px; padding: 14px; color: white; z-index: 109; display: none; flex-direction: column; gap: 8px; text-align: center; font-size: 13px; }
         #mp-panel.open { display: flex; }
         .mp-btn { padding: 8px; border-radius: 10px; border: none; background: #ff4081; color: white; font-weight: bold; cursor: pointer; font-size: 13px; }
         .mp-small { flex: 1; padding: 7px 4px; font-size: 11px; background: #5c6bc0; }
@@ -334,9 +334,8 @@
         }
 
         // Readiness gates — expansion is earned by deepening the farm you already have.
-        const PLANET_GATES = {
-            'HOME GREEN':  null,
-            'STAR MARKET': null,                                                  // hub, never terraformed
+        const HUB_PLANETS = new Set(['STAR MARKET']);      // shops only — never farmed or terraformed
+        const PLANET_GATES = {                            // absent = farmable with no requirements
             'EMBER ROCK':  { day: 10, harvests: 15 },
             'RED WASTES':  { day: 25, harvests: 50,  requires: [{ planet: 'EMBER ROCK', stage: 2 }] },
             'BLUE CRAGS':  { day: 50, harvests: 120, requiresCount: { stage: 3, count: 2 } }
@@ -346,7 +345,7 @@
 
         function gateStatus(p) {
             const g = PLANET_GATES[p.userData.name];
-            if (!g) return { locked: false, reasons: [] };
+            if (!g) return { locked: false, reasons: [] };   // no entry means no requirements
             const reasons = [];
             if (gameState.day < g.day) reasons.push(`Day ${g.day} (you're on ${gameState.day})`);
             if (gameState.totalHarvests < g.harvests) reasons.push(`${g.harvests} harvests (you have ${gameState.totalHarvests})`);
@@ -361,7 +360,7 @@
             return { locked: reasons.length > 0, reasons };
         }
 
-        function isTerraformable(p) { return PLANET_GATES[p.userData.name] !== null; }
+        function isTerraformable(p) { return !HUB_PLANETS.has(p.userData.name); }
 
         function totalProduce() {
             let n = 0;
@@ -852,7 +851,7 @@
         
         // --- HUD ARCH ---
         const cycleCont = document.getElementById('cycle-container');
-        const ARC = { cx: 88, cy: 40, rx: 76, ry: 30 };
+        const ARC = { cx: 60, cy: 34, rx: 50, ry: 24 };
         for(let i=0; i<=4; i++) {
             const dot = document.createElement('div');
             dot.className = 'hud-dot';
@@ -1939,11 +1938,16 @@
         }
 
         function doPlow(p, pos, norm, charge = true) {
+            // Hubs sit at Bloom for looks, so the capacity check alone won't stop farming there.
+            if (!isTerraformable(p)) { flashStatus('You cannot farm the market hub.'); return false; }
             if (spotBlocked(pos, 'plow')) return false;
-            const cap = getPlotCap(p.userData.terraformProgress);
-            if (cap <= 0) { flashStatus('Terraform this planet more first!'); return false; }
+            const cap = plotCap(p);
+            if (cap <= 0) {
+                flashStatus(isTerraformable(p) ? `Reach Soil stage first (now ${STAGES[p.userData.stage].name})` : 'You cannot farm the market hub.');
+                return false;
+            }
             const currentMounds = interactables.filter(o => o.userData.type === 'mound' && o.userData.planet === p).length;
-            if (currentMounds >= cap) { flashStatus('No room to plow until you terraform further!'); return false; }
+            if (currentMounds >= cap) { flashStatus(`Plot limit ${cap} — terraform further for more.`); return false; }
             if (charge && gameState.stamina.current < PLOW_STAMINA) { flashStatus('Too tired to plow!'); return false; }
             if (charge) gameState.stamina.current -= PLOW_STAMINA;
             const mound = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 8), new THREE.MeshToonMaterial({ color: DIRT_DRY }));
