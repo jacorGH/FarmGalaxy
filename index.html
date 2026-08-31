@@ -376,14 +376,14 @@
             day: 1,
             totalHarvests: 0,
             money: 100,
-            stamina: { current: 100, max: 100 },
+            stamina: { current: 60, max: 60 },
             inventory: { wood: 10, stone: 5, crystal: 0, produce: {} },
             pendingSale: {},
             selectedCrop: 'turnip'
         };
 
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 5000);
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 14000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -411,7 +411,7 @@
                 if (x > W - r) draw(x - W);
             }
 
-            const ambient = ['rgba(255,100,200,0.07)', 'rgba(150,100,255,0.07)', 'rgba(50,200,255,0.05)'];
+            const ambient = ['rgba(255,100,200,0.035)', 'rgba(150,100,255,0.035)', 'rgba(50,200,255,0.025)'];
             for (let i = 0; i < 40; i++) {
                 const x = Math.random()*W, y = Math.random()*H, r = Math.random()*300+100;
                 const color = ambient[Math.floor(Math.random()*ambient.length)];
@@ -423,7 +423,7 @@
             }
 
             // Galactic band: elongated nebula wisps along a diagonal spiral-arm sweep
-            const bandColors = ['rgba(255,140,220,0.24)', 'rgba(160,120,255,0.24)', 'rgba(120,180,255,0.2)', 'rgba(255,205,150,0.16)'];
+            const bandColors = ['rgba(255,140,220,0.10)', 'rgba(160,120,255,0.10)', 'rgba(120,180,255,0.09)', 'rgba(255,205,150,0.07)'];
             const bandAngle = -0.35, bandCx = 512, bandCy = 460, cosA = Math.cos(bandAngle), sinA = Math.sin(bandAngle);
             for (let i = 0; i < 50; i++) {
                 const t = (i/50 - 0.5) * 1400;
@@ -444,24 +444,14 @@
 
             // Bright galactic core glow (kept away from the seam, no wrap needed)
             const coreGrd = ctx.createRadialGradient(560, 430, 0, 560, 430, 260);
-            coreGrd.addColorStop(0, 'rgba(255,245,220,0.55)');
-            coreGrd.addColorStop(0.3, 'rgba(255,200,220,0.26)');
+            coreGrd.addColorStop(0, 'rgba(255,245,220,0.20)');
+            coreGrd.addColorStop(0.3, 'rgba(255,200,220,0.09)');
             coreGrd.addColorStop(1, 'transparent');
             ctx.fillStyle = coreGrd; ctx.beginPath(); ctx.arc(560, 430, 260, 0, Math.PI*2); ctx.fill();
 
-            // Star scatter — denser along the galactic band, sparse elsewhere, varied brightness
-            for (let i = 0; i < 1000; i++) {
-                let x, y;
-                if (Math.random() < 0.6) {
-                    const t = (Math.random()-0.5) * 1400, spread = (Math.random()-0.5) * 260;
-                    x = bandCx + t*cosA - spread*sinA;
-                    y = bandCy + t*sinA + spread*cosA;
-                } else { x = Math.random()*W; y = Math.random()*H; }
-                x = ((x % W) + W) % W; // wrap into [0,W) — a point never needs a second draw
-                const s = Math.random()*1.6 + 0.3, b = Math.random()*0.5 + 0.5;
-                ctx.fillStyle = `rgba(255,255,255,${b})`;
-                ctx.beginPath(); ctx.arc(x, y, s, 0, Math.PI*2); ctx.fill();
-            }
+            // NOTE: no stars are painted here on purpose. Canvas pixels get magnified enormously
+            // across the skybox sphere and turn into stretched blobs — the real star field is the
+            // THREE.Points cloud, which stays crisp at any distance.
 
             // Soften the poles (top/bottom rows pinch to a point on the sphere) back
             // toward the flat base color so any pinching isn't a visible starburst.
@@ -476,7 +466,7 @@
             return new THREE.CanvasTexture(canvas);
         }
 
-        const nebGeo = new THREE.SphereGeometry(4200, 32, 32);
+        const nebGeo = new THREE.SphereGeometry(9000, 48, 32);
         const nebMat = new THREE.MeshBasicMaterial({ map: createCutesyNebula(), side: THREE.BackSide });
         scene.add(new THREE.Mesh(nebGeo, nebMat));
 
@@ -484,10 +474,10 @@
         const celestialMoon = new THREE.Mesh(new THREE.SphereGeometry(40, 16, 16), new THREE.MeshBasicMaterial({ color: 0xccccff }));
         scene.add(celestialSun, celestialMoon);
 
-        const stars = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({color: 0xffffff, size: 3, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
+        const stars = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({color: 0xffffff, size: 5, sizeAttenuation: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
         const starPts = [];
         for(let i=0; i<8000; i++) {
-            const v = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize().multiplyScalar(3400 + Math.random()*500);
+            const v = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize().multiplyScalar(6800 + Math.random()*900);
             starPts.push(v.x, v.y, v.z);
         }
         stars.geometry.setAttribute('position', new THREE.Float32BufferAttribute(starPts, 3));
@@ -525,6 +515,39 @@
                     rock.castShadow = true; scene.add(rock); addOutline(rock, 0.1); interactables.push(rock);
                 }
             });
+        }
+
+        // Energy berries: found while clearing trees and breaking ground. Tap to eat.
+        const BERRY_STAMINA = 15;
+        const berries = [];
+
+        function spawnBerry(planet, pos) {
+            const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 1), new THREE.MeshToonMaterial({ color: 0xff5c8a }));
+            b.position.copy(pos);
+            const n = pos.clone().sub(planet.position).normalize();
+            b.position.copy(planet.position).addScaledVector(n, planet.userData.radius + 0.35);
+            b.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), n);
+            b.userData = { type: 'berry', planet, phase: Math.random() * 6 };
+            b.castShadow = true;
+            b.scale.set(0,0,0);
+            scene.add(b); addOutline(b, 0.2); interactables.push(b); berries.push(b);
+            activeAnims.push({ obj: b, time: 0, targetY: 1, targetXZ: 1, type: 'pop' });
+            return b;
+        }
+
+        function eatBerry(b) {
+            if (gameState.stamina.current >= gameState.stamina.max) {
+                flashStatus('Already full of energy — leave it for later.');
+                return false;
+            }
+            gameState.stamina.current = Math.min(gameState.stamina.max, gameState.stamina.current + BERRY_STAMINA);
+            const bi = berries.indexOf(b); if (bi >= 0) berries.splice(bi, 1);
+            const ii = interactables.indexOf(b); if (ii >= 0) interactables.splice(ii, 1);
+            activeAnims.push({ obj: b, time: 0, type: 'destroy' });
+            playSFX('pop');
+            flashStatus(`+${BERRY_STAMINA} energy!`);
+            updateInventory();
+            return true;
         }
 
         function spawnDecoration(p) {
@@ -781,7 +804,7 @@
 
         // Read and validate the save BEFORE building the world. If it's unreadable we must
         // still generate trees/rocks/weeds, otherwise a bad save leaves totally barren planets.
-        const SAVE_VERSION = 3;
+        const SAVE_VERSION = 4;
         const BOOT_FLAG = 'galaxyFarmBooting';
         let pendingSave = null, saveQuarantined = false;
 
@@ -1055,7 +1078,18 @@
             broadcastWorldSync();
         }
 
-        function sleep() {
+        const CYCLE_LEN = Math.PI * 2;
+        const LATE_NIGHT = Math.PI * 1.5;
+
+        // Sleeping early is rewarded; staying up until the sun comes back around means you
+        // collapse and lose half your recovery.
+        function restoreFraction(passedOut) {
+            if (passedOut) return 0.5;
+            return (worldTime % CYCLE_LEN) < LATE_NIGHT ? 1.0 : 0.7;
+        }
+
+        function sleep(passedOut = false) {
+            const frac = restoreFraction(passedOut);
             let earned = 0;
             for (const id in gameState.pendingSale) {
                 earned += gameState.pendingSale[id] * CROP_DEFS[id].sellPrice;
@@ -1085,11 +1119,14 @@
             advanceTerraformDay();
             respawnMineRocks();
 
-            gameState.stamina.current = gameState.stamina.max;
+            gameState.stamina.current = Math.round(gameState.stamina.max * frac);
             gameState.day++;
             worldTime = 0;
+            nightWarned = false;
             playNewDayChime();
-            flashStatus(earned > 0 ? `Day ${gameState.day}! +${earned}c` : `Day ${gameState.day}`);
+            const restNote = passedOut ? ' — you collapsed, half rested'
+                           : frac < 1 ? ' — late night, poorly rested' : '';
+            flashStatus((earned > 0 ? `Day ${gameState.day}! +${earned}c` : `Day ${gameState.day}`) + restNote);
             updateInventory();
             saveGame();
             broadcastWorldSync();
@@ -1108,7 +1145,7 @@
                 inventory: gameState.inventory, pendingSale: gameState.pendingSale, selectedCrop: gameState.selectedCrop,
                 playerPos: v3(player.position),
                 planets: planets.map(p => ({ stage: p.userData.stage, pending: p.userData.pending, maturedHere: p.userData.maturedHere || 0 })),
-                props: [], weeds: [], mounds: [], fences: [], crops: []
+                props: [], weeds: [], mounds: [], fences: [], crops: [], berries: []
             };
             const moundIndexMap = new Map();
             interactables.forEach(o => {
@@ -1117,6 +1154,7 @@
                 if (planetIdx < 0) return;
                 if (t === 'prop') data.props.push({ planetIdx, pos: v3(o.position), quat: q4(o.quaternion), resource: o.userData.resource, hits: o.userData.hitsRemaining });
                 else if (t === 'weed') data.weeds.push({ planetIdx, pos: v3(o.position), quat: q4(o.quaternion) });
+                else if (t === 'berry') data.berries.push({ planetIdx, pos: v3(o.position) });
                 else if (t === 'fence') data.fences.push({ planetIdx, pos: v3(o.position), quat: q4(o.quaternion) });
                 else if (t === 'mound') { moundIndexMap.set(o, data.mounds.length); data.mounds.push({ planetIdx, pos: v3(o.position), quat: q4(o.quaternion), hasCrop: o.userData.hasCrop }); }
             });
@@ -1172,6 +1210,7 @@
             const quat = (q) => new THREE.Quaternion(q.x, q.y, q.z, q.w);
             const props = data.props || [], weedList = data.weeds || [], moundList = data.mounds || [];
             const fenceList = data.fences || [], cropList = data.crops || [], planetList = data.planets || [];
+            const berryList = data.berries || [];
 
             planetList.forEach((pd, i) => {
                 if (!planets[i]) return;
@@ -1222,6 +1261,12 @@
                 fence.position.copy(vec(fd.pos)); fence.quaternion.copy(quat(fd.quat));
                 fence.userData = { type: 'fence', planet };
                 scene.add(fence); interactables.push(fence);
+            });
+
+            berryList.forEach(bd => {
+                const planet = planets[bd.planetIdx]; if (!planet) return;
+                const b = spawnBerry(planet, new THREE.Vector3(bd.pos.x, bd.pos.y, bd.pos.z));
+                b.scale.set(1,1,1); b.userData.popping = false;
             });
 
             cropList.forEach(cd => {
@@ -1456,7 +1501,7 @@
                 scene.remove(interactables[i]);
                 interactables.splice(i, 1);
             }
-            weeds.length = 0; crops.length = 0;
+            weeds.length = 0; crops.length = 0; berries.length = 0;
         }
 
         function applyNetSnapshot(data) {
@@ -1567,6 +1612,7 @@
         // Guest-side: intercepts water/plant/harvest/deposit and sends them to the host instead
         // of applying locally. Everything else (plow, hammer, fence, sleep) stays host-only for now.
         function handleGuestAction(obj, type) {
+            if (type === 'berry') { eatBerry(obj); return true; }
             if (type === 'shop') { openStore(); return true; }
             if (type === 'bed') { flashStatus('Only the farm owner can sleep here.'); return true; }
             if (type === 'bin') { sendMPAction({ tool: 'deposit' }); return true; }
@@ -1956,6 +2002,7 @@
             mound.userData = { type: 'mound', planet: p, hasCrop: false, cropRef: null };
             mound.scale.set(0,0,0); scene.add(mound); interactables.push(mound); addOutline(mound, 0.05);
             activeAnims.push({ obj: mound, time: 0, targetY: 0.2, targetXZ: 1.0, type: 'pop' });
+            if (Math.random() < 0.12) spawnBerry(p, pos.clone());
             playSFX('pop'); updateInventory();
             broadcastWorldSync();
             return true;
@@ -2044,6 +2091,7 @@
                         obj.userData.resource === 'wood' ? gameState.inventory.wood++ : gameState.inventory.stone++;
                         if (obj.userData.planet && obj.userData.planet.userData.isMine) gameState.inventory.crystal = (gameState.inventory.crystal || 0) + 1;
                         const owner = obj.userData.planet;
+                        if (owner && obj.userData.resource === 'wood' && Math.random() < 0.35) spawnBerry(owner, obj.position.clone());
                         activeAnims.push({ obj, time: 0, type: 'destroy' });
                         interactables.splice(interactables.indexOf(obj), 1); playSFX('pop');
                         checkClearedStage(owner);
@@ -2150,7 +2198,7 @@
         updateTerraformHUD();
         updateInventory();
 
-        let framesRendered = 0, animErrorLogged = false;
+        let framesRendered = 0, animErrorLogged = false, nightWarned = false;
         function animate() {
             requestAnimationFrame(animate);
             try { animateFrame(); } catch (err) {
@@ -2165,8 +2213,14 @@
         }
 
         function animateFrame() {
-            worldTime += DAY_CYCLE_SPEED; 
-            const cyclePos = worldTime % (Math.PI * 2);
+            worldTime += DAY_CYCLE_SPEED;
+            // A full sun+moon circuit ends the day whether you slept or not.
+            if (worldTime >= CYCLE_LEN) { sleep(true); }
+            const cyclePos = worldTime % CYCLE_LEN;
+            if (!nightWarned && cyclePos >= Math.PI) {
+                nightWarned = true;
+                flashStatus('Night falling — head to bed soon.');
+            }
             // Sun sweeps left -> zenith -> right over the first half of the cycle (day).
             // Moon = sunAngle + PI, so it rises on the left the instant the sun sets on the
             // right, arcs the same way, and hands back to the sun exactly as it sets.
@@ -2180,9 +2234,11 @@
             const sunHeight = Math.sin(sunAngle);
             // smooth twilight ramp: 0 = full night, 1 = full day
             const daylight = Math.max(0, Math.min(1, (sunHeight + 0.25) / 0.5));
-            const isDay = sunHeight > -0.05;
-            icon.innerText = isDay ? '☀️' : '🌙';
-            icon.style.filter = isDay ? 'drop-shadow(0 0 8px orange)' : 'drop-shadow(0 0 8px #cfd8ff)';
+            // The icon must swap exactly where the arc resets (cyclePos = PI). Deriving it from
+            // sun height instead put the swap a few seconds off at BOTH ends of the arc.
+            const isNightHalf = cyclePos >= Math.PI;
+            icon.innerText = isNightHalf ? '🌙' : '☀️';
+            icon.style.filter = isNightHalf ? 'drop-shadow(0 0 8px #cfd8ff)' : 'drop-shadow(0 0 8px orange)';
 
             sunLight.position.set(Math.cos(sunAngle)*1000, Math.sin(sunAngle)*1000, 0);
             sunLight.intensity = 0.05 + daylight * 1.30;
@@ -2234,6 +2290,11 @@
                 if (s.userData.planet === currentPlanet && Math.random() > 0.9998) { playSFX('baaa'); showBaaaBubble(s.position); }
             });
 
+            berries.forEach(b => {
+                b.userData.phase += 0.06;
+                const k = 1 + Math.sin(b.userData.phase) * 0.12;
+                if (!b.userData.popping) b.scale.set(k, k, k);
+            });
             weeds.forEach(w => { w.userData.phase += 0.05; const s = 1 + Math.sin(w.userData.phase) * 0.1; w.scale.set(s,s,s); });
 
             crops.forEach(c => {
