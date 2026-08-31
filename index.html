@@ -1793,6 +1793,11 @@
                 doFence(p, new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), new THREE.Vector3(msg.norm.x, msg.norm.y, msg.norm.z), new THREE.Vector3(msg.from.x, msg.from.y, msg.from.z));
                 return;
             }
+            if (msg.tool === 'snapfence') {
+                const f = findNearestOfType(new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), 'fence', 1.5);
+                if (f) snapFence(f);
+                return;
+            }
             if (msg.tool === 'shear') {
                 const sh = findNearestOfType(new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), 'sheep', 1.5);
                 if (sh) shearSheep(sh);
@@ -1887,6 +1892,9 @@
                 sendMPAction({ tool: mature ? 'harvest' : 'water', pos: v3(obj.position) }); return true;
             }
             if (window.activeTool === 'water' && type === 'mound') { flashStatus('Plant a seed first!'); return true; }
+            if (window.activeTool === 'hand' && type === 'fence') {
+                sendMPAction({ tool: 'snapfence', pos: v3(obj.position) }); return true;
+            }
             if (window.activeTool === 'hammer' && (type === 'prop' || type === 'weed' || type === 'fence')) {
                 if (type === 'prop') {
                     if (gameState.stamina.current < CLEAR_STAMINA) { flashStatus('Too tired to swing!'); return true; }
@@ -2285,20 +2293,73 @@
             return true;
         }
 
-        const FENCE_SPAN = 1.4;        // rail length, so neighbours can butt up against each other
-        const FENCE_SNAP = 2.6;        // distance within which a new fence aligns to an old one
+        const FENCE_SPAN = 1.4;        // rail length, so neighbours butt up against each other
+        const FENCE_SNAP = 2.6;        // distance within which a new fence attaches to an old one
+        const HAND_SNAP = 4.0;         // wider reach when re-snapping by hand
 
-        function nearestFence(pos, planet) {
-            let best = null, bd = FENCE_SNAP;
+        function nearestFence(pos, planet, reach = FENCE_SNAP, exclude = null) {
+            let best = null, bd = reach;
             interactables.forEach(o => {
-                if (o.userData.type !== 'fence' || o.userData.planet !== planet) return;
+                if (o === exclude || o.userData.type !== 'fence' || o.userData.planet !== planet) return;
                 const d = o.position.distanceTo(pos);
                 if (d < bd) { bd = d; best = o; }
             });
             return best;
         }
 
-        function doFence(p, pos, norm, lookFrom) {
+        // A fence's rail runs along its local X axis, so its two connection points sit one
+        // span away in either direction. Those are the slots a neighbour can attach to.
+        function fenceAxis(f) {
+            return new THREE.Vector3(1, 0, 0).applyQuaternion(f.quaternion).normalize();
+        }
+
+        function surfacePoint(planet, pos) {
+            const n = pos.clone().sub(planet.position).normalize();
+            return planet.position.clone().addScaledVector(n, planet.userData.radius);
+        }
+
+        function slotOccupied(pos, exclude) {
+            return interactables.some(o => o !== exclude && o.userData.type === 'fence'
+                && o.position.distanceTo(pos) < 0.55);
+        }
+
+        // Free attachment points around a fence, projected back onto the planet surface.
+        function freeSlots(neighbour, planet, exclude) {
+            const axis = fenceAxis(neighbour);
+            return [ FENCE_SPAN, -FENCE_SPAN ]
+                .map(d => surfacePoint(planet, neighbour.position.clone().addScaledVector(axis, d)))
+                .filter(pos => !slotOccupied(pos, exclude));
+        }
+
+        // Orientation that keeps a neighbour's heading but sits flat on the surface here.
+        function alignedQuaternion(neighbour, norm) {
+            const q = neighbour.quaternion.clone();
+            const reseat = new THREE.Quaternion().setFromUnitVectors(
+                new THREE.Vector3(0, 1, 0).applyQuaternion(q), norm);
+            q.premultiply(reseat);
+            return q;
+        }
+
+        // Used by the hand tool: pull an existing fence into line with its nearest neighbour.
+        function snapFence(fence) {
+            const planet = fence.userData.planet;
+            const neighbour = nearestFence(fence.position, planet, HAND_SNAP, fence);
+            if (!neighbour) { flashStatus('No fence nearby to attach to.'); return false; }
+            const slots = freeSlots(neighbour, planet, fence);
+            if (!slots.length) { flashStatus('Both ends of that fence are already taken.'); return false; }
+            let best = slots[0], bd = best.distanceTo(fence.position);
+            slots.forEach(sp => { const d = sp.distanceTo(fence.position); if (d < bd) { bd = d; best = sp; } });
+            fence.position.copy(best);
+            fence.quaternion.copy(alignedQuaternion(neighbour, best.clone().sub(planet.position).normalize()));
+            playSFX('thud');
+            flashStatus('Fence attached and aligned.');
+            refreshAllPens();
+            broadcastWorldSync();
+            return true;
+        }
+
+        function doFence(p, pos, normIn, lookFrom) {
+            let norm = normIn.clone();
             if (spotBlocked(pos, 'fence')) return false;
             if (gameState.inventory.wood <= 0) { flashStatus('Need wood!'); return false; }
             gameState.inventory.wood--; updateInventory();
@@ -2312,11 +2373,16 @@
             // rather than a scatter of posts facing wherever the player happened to stand.
             const neighbour = nearestFence(pos, p);
             if (neighbour) {
-                q.copy(neighbour.quaternion);
-                // re-seat onto this planet's surface normal at the new spot
-                const nq = new THREE.Quaternion().setFromUnitVectors(
-                    new THREE.Vector3(0,1,0).applyQuaternion(q), norm);
-                q.premultiply(nq);
+                // Snap onto the neighbour's nearest free end so posts actually meet, then
+                // inherit its heading. Aligning rotation alone still left visible gaps.
+                const slots = freeSlots(neighbour, p, fence);
+                if (slots.length) {
+                    let best = slots[0], bd = best.distanceTo(pos);
+                    slots.forEach(sp => { const d = sp.distanceTo(pos); if (d < bd) { bd = d; best = sp; } });
+                    fence.position.copy(best);
+                    norm = best.clone().sub(p.position).normalize();
+                }
+                q.copy(alignedQuaternion(neighbour, norm));
             } else {
                 const look = lookFrom.clone().sub(pos).projectOnPlane(norm).normalize();
                 const m = new THREE.Matrix4().lookAt(pos, pos.clone().add(look), norm); q.setFromRotationMatrix(m);
@@ -2426,6 +2492,8 @@
                     if (type === 'weed') checkClearedStage(owner);
                     if (type === 'fence') refreshAllPens();
                     broadcastWorldSync();
+                } else if (window.activeTool === 'hand' && type === 'fence') {
+                    snapFence(obj);
                 } else if (window.activeTool === 'fence' && type === 'fence') {
                     obj.rotateY(Math.PI/4); playSFX('thud');
                 } else if (window.activeTool === 'seed' && type === 'mound' && !obj.userData.hasCrop) {
