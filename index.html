@@ -298,6 +298,7 @@
             pumpkin: { name: 'Pumpkin', color: 0xff8c00, growDays: 6, regrowDays: 0, seedCost: 60, sellPrice: 200 }
         };
         const GOODS = { wool: { name: 'Wool', sellPrice: 90 } };   // non-crop sellables
+        const ITEM_ICONS = { turnip: '🥬', tomato: '🍅', pumpkin: '🎃', wool: '🧶' };
         function goodName(id) { return CROP_DEFS[id] ? CROP_DEFS[id].name : (GOODS[id] ? GOODS[id].name : id); }
         function sellPriceOf(id) { return CROP_DEFS[id] ? CROP_DEFS[id].sellPrice : (GOODS[id] ? GOODS[id].sellPrice : 0); }
 
@@ -1080,9 +1081,16 @@
             // rewriting the whole panel would delete it (this caused a hard crash on load).
             const el = document.getElementById('inv-lines');
             if (!el) return;
+            // what's in the bag right now, so wool and produce are visible without opening a shop
+            const carried = [];
+            for (const id in gameState.inventory.produce) {
+                const n = gameState.inventory.produce[id] || 0;
+                if (n > 0) carried.push(`${ITEM_ICONS[id] || '•'}${n}`);
+            }
             el.innerHTML =
-                `🪓${gameState.inventory.wood} 🪨${gameState.inventory.stone}${crystal ? ' 💎' + crystal : ''}${wool ? ' 🧶' + wool : ''} 💰${gameState.money}<br>` +
-                `📅Day ${gameState.day} ⚡<span class="stat-bar"><span class="stat-bar-fill" style="width:${pct}%"></span></span>`;
+                `🪓${gameState.inventory.wood} 🪨${gameState.inventory.stone}${crystal ? ' 💎' + crystal : ''} 💰${gameState.money}<br>` +
+                `📅Day ${gameState.day} ⚡<span class="stat-bar"><span class="stat-bar-fill" style="width:${pct}%"></span></span>` +
+                (carried.length ? `<br>🎒 ${carried.join(' ')}` : '');
         }
         
         // --- HUD ARCH ---
@@ -1129,8 +1137,12 @@
         window.addEventListener('keyup', (e) => controls.keys[e.code] = false);
         window.addEventListener('wheel', (e) => camZoom = Math.max(8, Math.min(45, camZoom + e.deltaY * 0.02)));
 
+        // iOS fires touchstart AND then synthesizes a mousedown for the same tap, so every
+        // action ran twice (deposit then "nothing to sell", pick a sheep up then drop it).
+        let lastTouchAt = 0;
         renderer.domElement.addEventListener('mousedown', (e) => {
             if (mapOpen || document.getElementById('store-panel').classList.contains('open')) return;
+            if (performance.now() - lastTouchAt < 900) return;      // already handled as a touch
             if (document.pointerLockElement !== renderer.domElement && !/Android|iPhone/i.test(navigator.userAgent)) {
                 renderer.domElement.requestPointerLock();
             } else { handleInteraction(e.clientX, e.clientY); }
@@ -1145,6 +1157,7 @@
         });
 
         window.addEventListener('touchstart', (e) => {
+            lastTouchAt = performance.now();
             // UI overlays swallow input entirely — no joysticks, no world interaction behind them
             if (mapOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (e.touches.length === 2) initialPinchDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
@@ -1200,12 +1213,25 @@
         });
 
         // --- CORE LOOP HELPERS ---
-        let statusTimeout = null;
-        function flashStatus(msg) {
+        // Messages are queued and each held for a minimum time, so a follow-up can't wipe
+        // the previous one before it's readable.
+        const STATUS_HOLD = 1000;
+        let statusQueue = [], statusTimer = null;
+
+        function pumpStatus() {
+            if (statusTimer) return;
             const el = document.getElementById('status');
-            clearTimeout(statusTimeout);
-            el.innerText = msg;
-            statusTimeout = setTimeout(() => { el.innerText = toolLabel(window.activeTool); }, 1800);
+            if (!el) return;
+            if (!statusQueue.length) { el.innerText = toolLabel(window.activeTool); return; }
+            el.innerText = statusQueue.shift();
+            statusTimer = setTimeout(() => { statusTimer = null; pumpStatus(); }, STATUS_HOLD);
+        }
+
+        function flashStatus(msg) {
+            if (statusQueue[statusQueue.length - 1] === msg) return;   // ignore exact repeats
+            statusQueue.push(msg);
+            if (statusQueue.length > 3) statusQueue = statusQueue.slice(-3);
+            pumpStatus();
         }
 
         const SPROUT_COLOR = new THREE.Color(0x9ccc65);
@@ -1793,9 +1819,14 @@
                 doFence(p, new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), new THREE.Vector3(msg.norm.x, msg.norm.y, msg.norm.z), new THREE.Vector3(msg.from.x, msg.from.y, msg.from.z));
                 return;
             }
-            if (msg.tool === 'snapfence') {
+            if (msg.tool === 'handfence' || msg.tool === 'snapfence') {
                 const f = findNearestOfType(new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), 'fence', 1.5);
-                if (f) snapFence(f);
+                if (f) handFence(f);
+                return;
+            }
+            if (msg.tool === 'removefence') {
+                const f = findNearestOfType(new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), 'fence', 1.5);
+                if (f) removeFence(f);
                 return;
             }
             if (msg.tool === 'shear') {
@@ -1893,7 +1924,10 @@
             }
             if (window.activeTool === 'water' && type === 'mound') { flashStatus('Plant a seed first!'); return true; }
             if (window.activeTool === 'hand' && type === 'fence') {
-                sendMPAction({ tool: 'snapfence', pos: v3(obj.position) }); return true;
+                sendMPAction({ tool: 'handfence', pos: v3(obj.position) }); return true;
+            }
+            if (window.activeTool === 'fence' && type === 'fence') {
+                sendMPAction({ tool: 'removefence', pos: v3(obj.position) }); return true;
             }
             if (window.activeTool === 'hammer' && (type === 'prop' || type === 'weed' || type === 'fence')) {
                 if (type === 'prop') {
@@ -2340,6 +2374,88 @@
             return q;
         }
 
+        function fencePosts(f) {
+            const axis = fenceAxis(f), half = FENCE_SPAN / 2;
+            return [ f.position.clone().addScaledVector(axis, half),
+                     f.position.clone().addScaledVector(axis, -half) ];
+        }
+
+        function isAttachedTo(fence, neighbour) {
+            return Math.abs(fence.position.distanceTo(neighbour.position) - FENCE_SPAN) < 0.3;
+        }
+
+        // Swings the fence around the post it shares with a neighbour, leaving the joint fixed.
+        // This is what lets you turn a corner instead of deleting and re-placing.
+        function rotateFenceAtPost(fence, deg = 45) {
+            const planet = fence.userData.planet;
+            const mine = fencePosts(fence);
+            const neighbour = nearestFence(fence.position, planet, HAND_SNAP, fence);
+
+            let pivot = mine[0];
+            if (neighbour) {
+                const theirs = fencePosts(neighbour);
+                let bd = Infinity;
+                mine.forEach(mp => theirs.forEach(tp => {
+                    const d = mp.distanceTo(tp);
+                    if (d < bd) { bd = d; pivot = mp; }
+                }));
+            }
+
+            const norm = pivot.clone().sub(planet.position).normalize();
+
+            // Swinging one way eventually folds the fence back onto its neighbour. Rather than
+            // dead-ending, remember a spin direction and reverse it when the path is blocked,
+            // so repeated taps always keep moving.
+            let spin = fence.userData.spin || 1;
+            let rot = null, target = null;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                const tryRot = new THREE.Quaternion().setFromAxisAngle(norm, spin * deg * Math.PI / 180);
+                const rel = fence.position.clone().sub(pivot).applyQuaternion(tryRot);
+                const cand = surfacePoint(planet, pivot.clone().add(rel));
+                if (!slotOccupied(cand, fence)) { rot = tryRot; target = cand; break; }
+                spin = -spin;
+            }
+            if (!target) { flashStatus('No room to swing this fence.'); return false; }
+            fence.userData.spin = spin;
+
+            fence.position.copy(target);
+            const q = fence.quaternion.clone().premultiply(rot);
+            const localNorm = target.clone().sub(planet.position).normalize();
+            q.premultiply(new THREE.Quaternion().setFromUnitVectors(
+                new THREE.Vector3(0, 1, 0).applyQuaternion(q), localNorm));
+            fence.quaternion.copy(q);
+
+            playSFX('thud');
+            flashStatus(neighbour ? 'Pivoted at the joint.' : 'Rotated.');
+            refreshAllPens();
+            broadcastWorldSync();
+            return true;
+        }
+
+        // Reclaim a fence and get the wood back, without switching to the hammer.
+        function removeFence(fence) {
+            const owner = fence.userData.planet;
+            gameState.inventory.wood++;
+            activeAnims.push({ obj: fence, time: 0, type: 'destroy' });
+            const i = interactables.indexOf(fence);
+            if (i >= 0) interactables.splice(i, 1);
+            playSFX('pop');
+            flashStatus('Fence reclaimed (+1 wood).');
+            updateInventory();
+            refreshAllPens();
+            broadcastWorldSync();
+            return true;
+        }
+
+        // Hand on a fence: attach it if it's loose, otherwise pivot it around the joint.
+        // Tapping repeatedly walks the fence around the corner until it points where you want.
+        function handFence(fence) {
+            const planet = fence.userData.planet;
+            const neighbour = nearestFence(fence.position, planet, HAND_SNAP, fence);
+            if (neighbour && !isAttachedTo(fence, neighbour)) return snapFence(fence);
+            return rotateFenceAtPost(fence, 45);
+        }
+
         // Used by the hand tool: pull an existing fence into line with its nearest neighbour.
         function snapFence(fence) {
             const planet = fence.userData.planet;
@@ -2397,7 +2513,13 @@
         }
 
         // --- INTERACTION ---
+        let lastInteractAt = 0;
         function handleInteraction(x, y) {
+            // Guard against any remaining duplicate-event path; 150ms still allows fast tapping.
+            const nowMs = performance.now();
+            if (nowMs - lastInteractAt < 150) return;
+            lastInteractAt = nowMs;
+
             const mouse = new THREE.Vector2();
             if (document.pointerLockElement) { mouse.set(0, 0); }
             else { mouse.set((x/window.innerWidth)*2-1, -(y/window.innerHeight)*2+1); }
@@ -2493,9 +2615,9 @@
                     if (type === 'fence') refreshAllPens();
                     broadcastWorldSync();
                 } else if (window.activeTool === 'hand' && type === 'fence') {
-                    snapFence(obj);
+                    handFence(obj);
                 } else if (window.activeTool === 'fence' && type === 'fence') {
-                    obj.rotateY(Math.PI/4); playSFX('thud');
+                    removeFence(obj);
                 } else if (window.activeTool === 'seed' && type === 'mound' && !obj.userData.hasCrop) {
                     const def = CROP_DEFS[gameState.selectedCrop];
                     if (gameState.money < def.seedCost) { flashStatus(`Need ${def.seedCost}c for ${def.name}`); return; }
