@@ -105,7 +105,7 @@
     <div id="cycle-container"><div id="celestial-icon">☀️</div></div>
     <div id="inventory"><div id="inv-lines">🪓10 🪨5 💰100<br>📅Day 1 ⚡<span class="stat-bar"><span class="stat-bar-fill" style="width:100%"></span></span></div><div id="terraform-line">🌍 <span class="stat-bar" id="terraform-bar"><span class="stat-bar-fill" id="terraform-fill" style="background:#8bc34a;width:0%"></span></span> <span id="terraform-pct">Bloom 100%</span></div></div>
     <div id="hud"><span id="planet-name">HOME GREEN</span>
-        <div id="status">🚜 PLOW</div></div>
+        <div id="status">⛏️ HOE</div></div>
     <div id="fatal-banner"></div>
     <div id="confirm-modal">
         <div class="confirm-box">
@@ -134,11 +134,12 @@
         <a id="mp-link" href="#" onclick="openGameLink(event)">Game link ↗</a>
     </div>
     <div id="tool-list">
-        <div class="tool active" id="tool-plow" onclick="selectTool('plow')">🚜</div>
+        <div class="tool active" id="tool-plow" onclick="selectTool('plow')">⛏️</div>
         <div class="tool" id="tool-seed" onclick="selectTool('seed')">🌱</div>
         <div class="tool" id="tool-water" onclick="selectTool('water')">💧</div>
         <div class="tool" id="tool-hammer" onclick="selectTool('hammer')">🔨</div>
         <div class="tool" id="tool-fence" onclick="selectTool('fence')">🚧</div>
+        <div class="tool" id="tool-shears" onclick="selectTool('shears')">✂️</div>
     </div>
     <div id="crop-bar">
         <div class="crop-btn active" data-crop="turnip" onclick="selectCrop('turnip')">🥬</div>
@@ -292,6 +293,10 @@
             tomato:  { name: 'Tomato',  color: 0xff6347, growDays: 4, regrowDays: 3, seedCost: 25, sellPrice: 45 },
             pumpkin: { name: 'Pumpkin', color: 0xff8c00, growDays: 6, regrowDays: 0, seedCost: 60, sellPrice: 200 }
         };
+        const GOODS = { wool: { name: 'Wool', sellPrice: 90 } };   // non-crop sellables
+        function goodName(id) { return CROP_DEFS[id] ? CROP_DEFS[id].name : (GOODS[id] ? GOODS[id].name : id); }
+        function sellPriceOf(id) { return CROP_DEFS[id] ? CROP_DEFS[id].sellPrice : (GOODS[id] ? GOODS[id].sellPrice : 0); }
+
         const STAGE_SCALE = [0.55, 0.85, 1.2]; // sprout, growing, mature
         const DIRT_DRY = 0x4e3524, DIRT_WET = 0x2a1810;
         function setMoundWet(mound, wet) {
@@ -364,7 +369,7 @@
 
         function totalProduce() {
             let n = 0;
-            for (const k in gameState.inventory.produce) n += gameState.inventory.produce[k] || 0;
+            for (const k in gameState.inventory.produce) { if (CROP_DEFS[k]) n += gameState.inventory.produce[k] || 0; }
             return n;
         }
 
@@ -550,6 +555,99 @@
             return true;
         }
 
+        // --- SHEEP ---
+        const WOOL_DAYS = 3;         // days of being penned before wool is ready
+        const PEN_RADIUS = 7;        // how close fences must be to count
+        const PEN_FENCES = 5;        // how many nearby fences make a pen
+        let carriedSheep = null;
+
+        function spawnSheep(p, offset, state) {
+            const sheep = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.SphereGeometry(0.7, 10, 10), new THREE.MeshToonMaterial({ color: 0xffffff }));
+            sheep.add(body); addOutline(body, 0.1);
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 4), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+            const e1 = eye.clone(); e1.position.set(0.3, 0.2, 0.6);
+            const e2 = eye.clone(); e2.position.set(-0.3, 0.2, 0.6);
+            sheep.add(e1, e2);
+            const off = offset ? offset.clone().normalize()
+                : new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
+            sheep.userData = {
+                type: 'sheep', planet: p, offset: off, jumpTime: Math.random()*10, e1, e2, body,
+                penned: !!(state && state.penned), woolDays: (state && state.woolDays) || 0,
+                hasWool: !!(state && state.hasWool)
+            };
+            scene.add(sheep); creatures.push(sheep); interactables.push(sheep);
+            updateSheepLook(sheep);
+            return sheep;
+        }
+
+        function updateSheepLook(s) {
+            const woolly = s.userData.hasWool;
+            s.userData.body.material.color.set(woolly ? 0xffffff : 0xd9d2c5);
+            s.userData.body.scale.setScalar(woolly ? 1.0 : 0.82);
+        }
+
+        function fencesNear(pos, planet) {
+            return interactables.filter(o => o.userData.type === 'fence'
+                && o.userData.planet === planet && o.position.distanceTo(pos) < PEN_RADIUS);
+        }
+
+        function updatePenned(s) {
+            const wasPenned = s.userData.penned;
+            s.userData.penned = fencesNear(s.position, s.userData.planet).length >= PEN_FENCES;
+            if (!s.userData.penned) { s.userData.woolDays = 0; s.userData.hasWool = false; updateSheepLook(s); }
+            return s.userData.penned && !wasPenned;
+        }
+
+        function refreshAllPens() {
+            creatures.forEach(s => {
+                const nowPenned = updatePenned(s);
+                if (nowPenned) flashStatus('Sheep penned! Wool in ' + WOOL_DAYS + ' days.');
+            });
+        }
+
+        function pickUpSheep(s) {
+            if (carriedSheep) { flashStatus('Already carrying a sheep.'); return; }
+            carriedSheep = s;
+            playSFX('baaa');
+            flashStatus('Carrying sheep — tap the ground to set it down.');
+        }
+
+        function placeSheep(planet, pos) {
+            const s = carriedSheep;
+            carriedSheep = null;
+            s.userData.planet = planet;
+            s.userData.offset = pos.clone().sub(planet.position).normalize();
+            updatePenned(s);
+            playSFX('thud');
+            flashStatus(s.userData.penned ? 'Set down inside a pen!' : 'Set down.');
+            broadcastWorldSync();
+        }
+
+        function shearSheep(s) {
+            if (!s.userData.penned) { flashStatus('Pen it with fences first (needs ' + PEN_FENCES + ' nearby).'); return; }
+            if (!s.userData.hasWool) {
+                const left = Math.max(0, WOOL_DAYS - s.userData.woolDays);
+                flashStatus(left > 0 ? `Wool ready in ${left} day${left>1?'s':''}.` : 'No wool yet.');
+                return;
+            }
+            s.userData.hasWool = false; s.userData.woolDays = 0;
+            updateSheepLook(s);
+            gameState.inventory.produce.wool = (gameState.inventory.produce.wool || 0) + 1;
+            playSFX('pop');
+            flashStatus('Sheared 1 wool!');
+            updateInventory(); broadcastWorldSync();
+        }
+
+        function growWool() {
+            creatures.forEach(s => {
+                updatePenned(s);
+                if (!s.userData.penned || s.userData.hasWool) return;
+                s.userData.woolDays++;
+                if (s.userData.woolDays >= WOOL_DAYS) { s.userData.hasWool = true; updateSheepLook(s); }
+            });
+        }
+
         function spawnDecoration(p) {
             const radius = p.userData.radius;
             for(let i=0; i<p.userData.decoCount; i++) {
@@ -577,17 +675,7 @@
 
             if (!skipDecoration) spawnDecoration(p);
             
-            for(let i=0; i<3; i++) {
-                const sheep = new THREE.Group();
-                const body = new THREE.Mesh(new THREE.SphereGeometry(0.7, 10, 10), new THREE.MeshToonMaterial({color: 0xffffff}));
-                sheep.add(body); addOutline(body, 0.1);
-                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 4), new THREE.MeshBasicMaterial({color: 0x000000}));
-                const e1 = eye.clone(); e1.position.set(0.3, 0.2, 0.6);
-                const e2 = eye.clone(); e2.position.set(-0.3, 0.2, 0.6);
-                sheep.add(e1, e2);
-                sheep.userData = { planet: p, offset: new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize(), jumpTime: Math.random()*10, e1, e2 };
-                scene.add(sheep); creatures.push(sheep);
-            }
+            if (!skipDecoration) { for (let i = 0; i < 3; i++) spawnSheep(p); }
             return p;
         }
 
@@ -648,6 +736,11 @@
             if (p === currentPlanet) updateTerraformHUD();
         }
 
+        // The Cleared check used to run only when a prop was destroyed. If a planet was cleared
+        // while its gate was still locked, nothing was left to destroy and it deadlocked forever.
+        // Re-evaluating every planet on map open and at day rollover heals that automatically.
+        function refreshClearedStages() { planets.forEach(p => checkClearedStage(p)); }
+
         function costLabel(c) {
             if (!c) return '';
             if (c.kind === 'clear') return 'Clear every tree, rock and weed';
@@ -676,6 +769,7 @@
                 let need = c.produce;
                 for (const k in gameState.inventory.produce) {
                     if (need <= 0) break;
+                    if (!CROP_DEFS[k]) continue;                 // wool isn't compost
                     const take = Math.min(need, gameState.inventory.produce[k] || 0);
                     gameState.inventory.produce[k] -= take;
                     need -= take;
@@ -694,7 +788,18 @@
             if (p.userData.stage >= MAX_STAGE) { mapNote('Fully terraformed.'); return; }
 
             const c = stageCost(p, p.userData.stage);
-            if (c.kind === 'clear') { mapNote(`${propsRemaining(p)} tree/rock/weed left to clear.`); return; }
+            if (c.kind === 'clear') {
+                const left = propsRemaining(p);
+                if (left === 0) {
+                    checkClearedStage(p);
+                    if (p.userData.stage >= 1) {
+                        mapNote(`${p.userData.name} is now Cleared!`);
+                        updateInventory(); buildMap(); renderMapDetail();
+                        saveGame(); broadcastWorldSync();
+                    } else mapNote('Still locked.');
+                } else mapNote(`${left} tree/rock/weed left to clear.`);
+                return;
+            }
             if (c.kind === 'grow') {
                 mapNote(`${p.userData.maturedHere || 0} of ${c.crops} crops matured here so far.`);
                 return;
@@ -804,7 +909,7 @@
 
         // Read and validate the save BEFORE building the world. If it's unreadable we must
         // still generate trees/rocks/weeds, otherwise a bad save leaves totally barren planets.
-        const SAVE_VERSION = 4;
+        const SAVE_VERSION = 5;
         const BOOT_FLAG = 'galaxyFarmBooting';
         let pendingSave = null, saveQuarantined = false;
 
@@ -863,12 +968,13 @@
         function updateInventory() {
             const pct = Math.max(0, Math.round((gameState.stamina.current / gameState.stamina.max) * 100));
             const crystal = gameState.inventory.crystal || 0;
+            const wool = (gameState.inventory.produce && gameState.inventory.produce.wool) || 0;
             // NOTE: writes to #inv-lines, never #inventory. The terraform row is a sibling and
             // rewriting the whole panel would delete it (this caused a hard crash on load).
             const el = document.getElementById('inv-lines');
             if (!el) return;
             el.innerHTML =
-                `🪓${gameState.inventory.wood} 🪨${gameState.inventory.stone}${crystal ? ' 💎' + crystal : ''} 💰${gameState.money}<br>` +
+                `🪓${gameState.inventory.wood} 🪨${gameState.inventory.stone}${crystal ? ' 💎' + crystal : ''}${wool ? ' 🧶' + wool : ''} 💰${gameState.money}<br>` +
                 `📅Day ${gameState.day} ⚡<span class="stat-bar"><span class="stat-bar-fill" style="width:${pct}%"></span></span>`;
         }
         
@@ -890,10 +996,13 @@
         const controls = { L: {active:false, id:-1, origin:{x:0,y:0}, curr:{x:0,y:0}}, R: {active:false, id:-1, origin:{x:0,y:0}, curr:{x:0,y:0}}, keys: {} };
         window.toggleTools = () => { document.getElementById('tool-list').classList.toggle('open'); };
         window.toggleMP = () => { document.getElementById('mp-panel').classList.toggle('open'); };
+        const TOOL_LABELS = { plow: '⛏️ HOE', seed: '🌱 SEED', water: '💧 WATER', hammer: '🔨 HAMMER', fence: '🚧 FENCE', shears: '✂️ SHEARS' };
+        function toolLabel(t) { return TOOL_LABELS[t] || t.toUpperCase(); }
+
         window.selectTool = (t) => {
             window.activeTool = t; document.querySelectorAll('.tool').forEach(el => el.classList.remove('active'));
             document.getElementById(`tool-${t}`).classList.add('active');
-            document.getElementById('status').innerText = t.toUpperCase();
+            document.getElementById('status').innerText = toolLabel(t);
             document.getElementById('tool-list').classList.remove('open');
             document.getElementById('crop-bar').classList.toggle('open', t === 'seed');
         };
@@ -983,7 +1092,7 @@
             const el = document.getElementById('status');
             clearTimeout(statusTimeout);
             el.innerText = msg;
-            statusTimeout = setTimeout(() => { el.innerText = window.activeTool.toUpperCase(); }, 1800);
+            statusTimeout = setTimeout(() => { el.innerText = toolLabel(window.activeTool); }, 1800);
         }
 
         const SPROUT_COLOR = new THREE.Color(0x9ccc65);
@@ -1092,7 +1201,7 @@
             const frac = restoreFraction(passedOut);
             let earned = 0;
             for (const id in gameState.pendingSale) {
-                earned += gameState.pendingSale[id] * CROP_DEFS[id].sellPrice;
+                earned += gameState.pendingSale[id] * sellPriceOf(id);
                 gameState.pendingSale[id] = 0;
             }
             gameState.money += earned;
@@ -1118,6 +1227,7 @@
 
             advanceTerraformDay();
             respawnMineRocks();
+            growWool();
 
             gameState.stamina.current = Math.round(gameState.stamina.max * frac);
             gameState.day++;
@@ -1145,7 +1255,7 @@
                 inventory: gameState.inventory, pendingSale: gameState.pendingSale, selectedCrop: gameState.selectedCrop,
                 playerPos: v3(player.position),
                 planets: planets.map(p => ({ stage: p.userData.stage, pending: p.userData.pending, maturedHere: p.userData.maturedHere || 0 })),
-                props: [], weeds: [], mounds: [], fences: [], crops: [], berries: []
+                props: [], weeds: [], mounds: [], fences: [], crops: [], berries: [], creatures: []
             };
             const moundIndexMap = new Map();
             interactables.forEach(o => {
@@ -1157,6 +1267,12 @@
                 else if (t === 'berry') data.berries.push({ planetIdx, pos: v3(o.position) });
                 else if (t === 'fence') data.fences.push({ planetIdx, pos: v3(o.position), quat: q4(o.quaternion) });
                 else if (t === 'mound') { moundIndexMap.set(o, data.mounds.length); data.mounds.push({ planetIdx, pos: v3(o.position), quat: q4(o.quaternion), hasCrop: o.userData.hasCrop }); }
+            });
+            creatures.forEach(sh => {
+                const pi = planets.indexOf(sh.userData.planet);
+                if (pi < 0) return;
+                data.creatures.push({ planetIdx: pi, offset: v3(sh.userData.offset),
+                    penned: !!sh.userData.penned, woolDays: sh.userData.woolDays || 0, hasWool: !!sh.userData.hasWool });
             });
             crops.forEach(c => {
                 data.crops.push({
@@ -1211,6 +1327,7 @@
             const props = data.props || [], weedList = data.weeds || [], moundList = data.mounds || [];
             const fenceList = data.fences || [], cropList = data.crops || [], planetList = data.planets || [];
             const berryList = data.berries || [];
+            const creatureList = data.creatures;
 
             planetList.forEach((pd, i) => {
                 if (!planets[i]) return;
@@ -1262,6 +1379,17 @@
                 fence.userData = { type: 'fence', planet };
                 scene.add(fence); interactables.push(fence);
             });
+
+            // Older saves have no creatures array — keep the default flock rather than
+            // silently deleting every sheep on the farm.
+            if (Array.isArray(creatureList)) {
+                creatureList.forEach(cd => {
+                    const planet = planets[cd.planetIdx]; if (!planet) return;
+                    spawnSheep(planet, new THREE.Vector3(cd.offset.x, cd.offset.y, cd.offset.z), cd);
+                });
+            } else {
+                planets.forEach(pl => { for (let i = 0; i < 3; i++) spawnSheep(pl); });
+            }
 
             berryList.forEach(bd => {
                 const planet = planets[bd.planetIdx]; if (!planet) return;
@@ -1502,6 +1630,7 @@
                 interactables.splice(i, 1);
             }
             weeds.length = 0; crops.length = 0; berries.length = 0;
+            creatures.forEach(c => scene.remove(c)); creatures.length = 0; carriedSheep = null;
         }
 
         function applyNetSnapshot(data) {
@@ -1546,6 +1675,11 @@
             if (msg.tool === 'fence') {
                 const p = planets[msg.planetIdx]; if (!p) return;
                 doFence(p, new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), new THREE.Vector3(msg.norm.x, msg.norm.y, msg.norm.z), new THREE.Vector3(msg.from.x, msg.from.y, msg.from.z));
+                return;
+            }
+            if (msg.tool === 'shear') {
+                const sh = findNearestOfType(new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), 'sheep', 1.5);
+                if (sh) shearSheep(sh);
                 return;
             }
             if (msg.tool === 'hit') {
@@ -1612,6 +1746,11 @@
         // Guest-side: intercepts water/plant/harvest/deposit and sends them to the host instead
         // of applying locally. Everything else (plow, hammer, fence, sleep) stays host-only for now.
         function handleGuestAction(obj, type) {
+            if (type === 'sheep') {
+                if (window.activeTool === 'shears') sendMPAction({ tool: 'shear', pos: v3(obj.position) });
+                else pickUpSheep(obj);
+                return true;
+            }
             if (type === 'berry') { eatBerry(obj); return true; }
             if (type === 'shop') { openStore(); return true; }
             if (type === 'bed') { flashStatus('Only the farm owner can sleep here.'); return true; }
@@ -1662,9 +1801,9 @@
             for (const id in gameState.inventory.produce) {
                 const qty = gameState.inventory.produce[id];
                 if (qty > 0) {
-                    const val = Math.floor(CROP_DEFS[id].sellPrice * STORE_SELL_RATE) * qty;
+                    const val = Math.floor(sellPriceOf(id) * STORE_SELL_RATE) * qty;
                     total += val;
-                    lines.push(`${CROP_DEFS[id].name} x${qty} — ${val}c`);
+                    lines.push(`${goodName(id)} x${qty} — ${val}c`);
                 }
             }
             document.getElementById('store-produce').innerHTML =
@@ -1683,7 +1822,7 @@
             let earned = 0;
             for (const id in gameState.inventory.produce) {
                 const qty = gameState.inventory.produce[id];
-                if (qty > 0) { earned += Math.floor(CROP_DEFS[id].sellPrice * STORE_SELL_RATE) * qty; gameState.inventory.produce[id] = 0; }
+                if (qty > 0) { earned += Math.floor(sellPriceOf(id) * STORE_SELL_RATE) * qty; gameState.inventory.produce[id] = 0; }
             }
             if (earned === 0) { storeStatus('Nothing to sell.'); return; }
             gameState.money += earned;
@@ -1887,7 +2026,7 @@
             if (c.kind === 'clear') {
                 const left = propsRemaining(p);
                 rows.push(`Next: <b>${nextName}</b> — ${costLabel(c)}<br><span style="opacity:.8">${left} left on this planet</span>`);
-                setStageButton(null);
+                setStageButton(left === 0 ? 'Complete Cleared' : null, left === 0);
             } else if (c.kind === 'grow') {
                 const have = p.userData.maturedHere || 0;
                 rows.push(`Next: <b>${nextName}</b> — ${costLabel(c)}<br><span style="opacity:.8">${have}/${c.crops} matured here</span>`);
@@ -1971,6 +2110,7 @@
             if (mapOpen) {
                 if (document.pointerLockElement) document.exitPointerLock();
                 if (!mapRenderer) initMap();
+                refreshClearedStages();
                 buildMap();
                 mapSelected = null; mapNote(''); renderMapDetail();
                 mapAutoSpin = true;
@@ -2024,6 +2164,7 @@
             fence.scale.set(0,0,0); scene.add(fence); interactables.push(fence);
             activeAnims.push({ obj: fence, time: 0, targetY: 1, targetXZ: 1, type: 'pop' });
             playSFX('thud');
+            refreshAllPens();
             broadcastWorldSync();
             return true;
         }
@@ -2100,7 +2241,7 @@
                     broadcastWorldSync();
                 } else if (window.activeTool === 'hammer') {
                     // permanent fixtures must never be destroyable
-                    if (type === 'bed' || type === 'bin' || type === 'shop') { flashStatus("You can't break that!"); return; }
+                    if (type === 'bed' || type === 'bin' || type === 'shop' || type === 'sheep') { flashStatus("You can't break that!"); return; }
                     if (type === 'fence') gameState.inventory.wood++;
 
                     if (type === 'mound' && obj.userData.cropRef) {
@@ -2116,6 +2257,7 @@
                     activeAnims.push({ obj, time: 0, type: 'destroy' });
                     interactables.splice(interactables.indexOf(obj), 1); playSFX('pop'); updateInventory();
                     if (type === 'weed') checkClearedStage(owner);
+                    if (type === 'fence') refreshAllPens();
                     broadcastWorldSync();
                 } else if (window.activeTool === 'fence' && type === 'fence') {
                     obj.rotateY(Math.PI/4); playSFX('thud');
@@ -2135,6 +2277,7 @@
                 const norm = pHits[0].face.normal.clone().transformDirection(p.matrixWorld).normalize();
                 const pos = norm.clone().multiplyScalar(p.userData.radius).add(p.position);
                 if (isGuest()) {
+                    if (carriedSheep) { placeSheep(p, pos); return; }
                     if (window.activeTool === 'plow') {
                         if (gameState.stamina.current < 3) { flashStatus('Too tired to plow!'); return; }
                         gameState.stamina.current -= 3; updateInventory();
@@ -2146,6 +2289,7 @@
                     }
                     return;
                 }
+                if (carriedSheep) { placeSheep(p, pos); return; }
                 if (window.activeTool === 'plow') doPlow(p, pos, norm);
                 else if (window.activeTool === 'fence') doFence(p, pos, norm, player.position);
             }
@@ -2281,6 +2425,13 @@
             });
 
             creatures.forEach(s => {
+                if (s === carriedSheep) {
+                    const up = player.position.clone().sub(currentPlanet.position).normalize();
+                    s.position.copy(player.position).addScaledVector(up, 1.9);
+                    s.quaternion.copy(player.quaternion);
+                    s.scale.set(0.75, 0.75, 0.75);
+                    return;
+                }
                 s.userData.jumpTime += 0.05; 
                 const hop = Math.sin(s.userData.jumpTime * 3); const hopHeight = Math.max(0, hop) * 0.6;
                 s.position.lerp(s.userData.offset.clone().multiplyScalar(s.userData.planet.userData.radius + 0.6 + hopHeight).add(s.userData.planet.position), 0.2);
