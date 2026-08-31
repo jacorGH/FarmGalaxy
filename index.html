@@ -83,6 +83,7 @@
         #tool-list.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
         .tool { width: 50px; height: 50px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 22px; background: rgba(0,0,0,0.8); color: white; cursor: pointer; }
         .tool.active { background: #fff; color: #000; transform: scale(1.1); }
+        .tool.locked { opacity: 0.42; filter: grayscale(1); }
 
         /* CROP SELECT BAR (shown while Seed tool active) */
         #crop-bar { position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); display: none; gap: 10px; z-index: 108; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.2); }
@@ -134,6 +135,7 @@
         <a id="mp-link" href="#" onclick="openGameLink(event)">Game link ↗</a>
     </div>
     <div id="tool-list">
+        <div class="tool" id="tool-hand" onclick="selectTool('hand')">✋</div>
         <div class="tool active" id="tool-plow" onclick="selectTool('plow')">⛏️</div>
         <div class="tool" id="tool-seed" onclick="selectTool('seed')">🌱</div>
         <div class="tool" id="tool-water" onclick="selectTool('water')">💧</div>
@@ -151,6 +153,8 @@
         <div class="panel-title">🛒 Star Market</div>
         <div id="store-produce">No produce to sell.</div>
         <button class="mp-btn" onclick="storeSellAll()">Sell produce now (90%)</button>
+        <div class="mp-or">— tools —</div>
+        <div class="store-row"><span>✂️ Shears</span><button class="mp-btn mp-small" id="buy-shears" onclick="storeBuyTool('shears')">Buy 500c</button></div>
         <div class="mp-or">— supplies —</div>
         <div class="store-row"><span>🪓 Wood</span><button class="mp-btn mp-small" onclick="storeBuy('wood')">Buy 20c</button></div>
         <div class="store-row"><span>🪨 Stone</span><button class="mp-btn mp-small" onclick="storeBuy('stone')">Buy 15c</button></div>
@@ -384,8 +388,19 @@
             stamina: { current: 60, max: 60 },
             inventory: { wood: 10, stone: 5, crystal: 0, produce: {} },
             pendingSale: {},
-            selectedCrop: 'turnip'
+            selectedCrop: 'turnip',
+            tools: { shears: false }        // absent/true = owned; shears must be bought
         };
+
+        const TOOL_SHOP = { shears: { name: 'Shears', price: 500 } };
+        function toolOwned(t) { return gameState.tools[t] !== false; }
+
+        function refreshToolLocks() {
+            Object.keys(TOOL_SHOP).forEach(t => {
+                const el = document.getElementById('tool-' + t);
+                if (el) el.classList.toggle('locked', !toolOwned(t));
+            });
+        }
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 14000);
@@ -479,14 +494,64 @@
         const celestialMoon = new THREE.Mesh(new THREE.SphereGeometry(40, 16, 16), new THREE.MeshBasicMaterial({ color: 0xccccff }));
         scene.add(celestialSun, celestialMoon);
 
-        const stars = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({color: 0xffffff, size: 5, sizeAttenuation: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
-        const starPts = [];
-        for(let i=0; i<8000; i++) {
-            const v = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize().multiplyScalar(6800 + Math.random()*900);
-            starPts.push(v.x, v.y, v.z);
+        // --- STAR FIELD: several layers, each its own size and shape ---
+        function starTexture(kind) {
+            const c = document.createElement('canvas');
+            c.width = c.height = 64;
+            const x = c.getContext('2d');
+            const mid = 32;
+            if (kind === 'dot') {
+                const g = x.createRadialGradient(mid, mid, 0, mid, mid, 30);
+                g.addColorStop(0, 'rgba(255,255,255,1)');
+                g.addColorStop(0.35, 'rgba(255,255,255,0.65)');
+                g.addColorStop(1, 'rgba(255,255,255,0)');
+                x.fillStyle = g; x.beginPath(); x.arc(mid, mid, 30, 0, Math.PI*2); x.fill();
+            } else if (kind === 'sparkle') {
+                // four-point sparkle: two tapered strokes plus a hot core
+                const g = x.createRadialGradient(mid, mid, 0, mid, mid, 12);
+                g.addColorStop(0, 'rgba(255,255,255,1)');
+                g.addColorStop(1, 'rgba(255,255,255,0)');
+                x.fillStyle = g; x.beginPath(); x.arc(mid, mid, 12, 0, Math.PI*2); x.fill();
+                x.strokeStyle = 'rgba(255,255,255,0.85)';
+                x.lineWidth = 2.2; x.lineCap = 'round';
+                x.beginPath(); x.moveTo(mid, 3); x.lineTo(mid, 61); x.stroke();
+                x.beginPath(); x.moveTo(3, mid); x.lineTo(61, mid); x.stroke();
+                x.strokeStyle = 'rgba(255,255,255,0.35)'; x.lineWidth = 1.4;
+                x.beginPath(); x.moveTo(12, 12); x.lineTo(52, 52); x.stroke();
+                x.beginPath(); x.moveTo(52, 12); x.lineTo(12, 52); x.stroke();
+            } else { // diamond
+                x.fillStyle = 'rgba(255,255,255,0.95)';
+                x.beginPath(); x.moveTo(mid, 8); x.lineTo(54, mid); x.lineTo(mid, 56); x.lineTo(10, mid); x.closePath(); x.fill();
+            }
+            return new THREE.CanvasTexture(c);
         }
-        stars.geometry.setAttribute('position', new THREE.Float32BufferAttribute(starPts, 3));
-        scene.add(stars);
+
+        const starLayers = [];
+        function addStarLayer(count, size, kind, tint, baseOpacity) {
+            const pts = [];
+            for (let i = 0; i < count; i++) {
+                const v = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5)
+                    .normalize().multiplyScalar(6800 + Math.random()*900);
+                pts.push(v.x, v.y, v.z);
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+            const mat = new THREE.PointsMaterial({
+                color: tint, size, sizeAttenuation: false, map: starTexture(kind),
+                transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
+            });
+            const layer = new THREE.Points(geo, mat);
+            layer.userData.baseOpacity = baseOpacity;
+            layer.userData.cfg = { size, kind, count };
+            scene.add(layer); starLayers.push(layer);
+            return layer;
+        }
+
+        addStarLayer(4200, 2.0, 'dot',     0xffffff, 0.55);  // faint dust
+        addStarLayer(1800, 3.5, 'dot',     0xfff4e2, 0.75);  // warm mid stars
+        addStarLayer(700,  5.5, 'dot',     0xdce8ff, 0.90);  // cool brighter stars
+        addStarLayer(150,  9.0, 'diamond', 0xffffff, 0.85);  // scattered diamonds
+        addStarLayer(90,  15.0, 'sparkle', 0xfff8d8, 1.00);  // rare showpieces
 
         const sunLight = new THREE.DirectionalLight(0xfff5ee, 1.3); sunLight.castShadow = true;
         const moonLight = new THREE.DirectionalLight(0xaebcff, 0.0);
@@ -496,8 +561,22 @@
         function addOutline(mesh, thickness = 0.1) {
             const outline = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide }));
             outline.scale.multiplyScalar(1 + thickness);
+            outline.raycast = function () {};   // outlines must never be tap targets
             mesh.add(outline);
             return outline;
+        }
+
+        // Walks up to whichever ancestor actually owns the userData. Sheep are nested
+        // scene > group > body > outline, so stopping after one level resolved taps to the
+        // body mesh - which then got destroyed by the hammer, leaving the eyes floating.
+        function resolveTarget(hitObj) {
+            let o = hitObj;
+            for (let depth = 0; o && depth < 8; depth++) {   // depth cap: never hang on a bad chain
+                if (o.userData && o.userData.type) return o;
+                if (o === scene || !o.parent) return null;
+                o = o.parent;
+            }
+            return null;
         }
 
         // --- PLANETS & PROPS ---
@@ -558,7 +637,9 @@
         // --- SHEEP ---
         const WOOL_DAYS = 3;         // days of being penned before wool is ready
         const PEN_RADIUS = 7;        // how close fences must be to count
-        const PEN_FENCES = 5;        // how many nearby fences make a pen
+        const PEN_FENCES = 5;        // minimum fences nearby
+        const PEN_SECTORS = 8;       // directions around the sheep we sample
+        const PEN_SECTORS_NEEDED = 5; // how many must contain a fence
         let carriedSheep = null;
 
         function spawnSheep(p, offset, state) {
@@ -592,10 +673,32 @@
                 && o.userData.planet === planet && o.position.distanceTo(pos) < PEN_RADIUS);
         }
 
+        // A count alone let you clump fences on one side and call it a pen. This also checks the
+        // fences are spread around the sheep, so you have to actually enclose it.
+        function penSectorsCovered(s) {
+            const planet = s.userData.planet;
+            const near = fencesNear(s.position, planet);
+            if (!near.length) return 0;
+            const up = s.position.clone().sub(planet.position).normalize();
+            let t1 = new THREE.Vector3(0, 1, 0).cross(up);
+            if (t1.lengthSq() < 1e-6) t1 = new THREE.Vector3(1, 0, 0).cross(up);
+            t1.normalize();
+            const t2 = up.clone().cross(t1).normalize();
+            const sectors = new Set();
+            near.forEach(f => {
+                const d = f.position.clone().sub(s.position);
+                const a = Math.atan2(d.dot(t2), d.dot(t1));
+                sectors.add(Math.floor(((a + Math.PI) / (Math.PI * 2)) * PEN_SECTORS) % PEN_SECTORS);
+            });
+            return sectors.size;
+        }
+
         function updatePenned(s) {
             const wasPenned = s.userData.penned;
-            s.userData.penned = fencesNear(s.position, s.userData.planet).length >= PEN_FENCES;
-            if (!s.userData.penned) { s.userData.woolDays = 0; s.userData.hasWool = false; updateSheepLook(s); }
+            const near = fencesNear(s.position, s.userData.planet).length;
+            s.userData.penned = near >= PEN_FENCES && penSectorsCovered(s) >= PEN_SECTORS_NEEDED;
+            if (!s.userData.penned) { s.userData.woolDays = 0; s.userData.hasWool = false; }
+            updateSheepLook(s);
             return s.userData.penned && !wasPenned;
         }
 
@@ -625,7 +728,11 @@
         }
 
         function shearSheep(s) {
-            if (!s.userData.penned) { flashStatus('Pen it with fences first (needs ' + PEN_FENCES + ' nearby).'); return; }
+            if (!s.userData.penned) {
+                const near = fencesNear(s.position, s.userData.planet).length;
+                flashStatus(`Not penned — ${near}/${PEN_FENCES} fences, enclosed on ${penSectorsCovered(s)}/${PEN_SECTORS_NEEDED} sides.`);
+                return;
+            }
             if (!s.userData.hasWool) {
                 const left = Math.max(0, WOOL_DAYS - s.userData.woolDays);
                 flashStatus(left > 0 ? `Wool ready in ${left} day${left>1?'s':''}.` : 'No wool yet.');
@@ -909,7 +1016,7 @@
 
         // Read and validate the save BEFORE building the world. If it's unreadable we must
         // still generate trees/rocks/weeds, otherwise a bad save leaves totally barren planets.
-        const SAVE_VERSION = 5;
+        const SAVE_VERSION = 6;
         const BOOT_FLAG = 'galaxyFarmBooting';
         let pendingSave = null, saveQuarantined = false;
 
@@ -996,10 +1103,16 @@
         const controls = { L: {active:false, id:-1, origin:{x:0,y:0}, curr:{x:0,y:0}}, R: {active:false, id:-1, origin:{x:0,y:0}, curr:{x:0,y:0}}, keys: {} };
         window.toggleTools = () => { document.getElementById('tool-list').classList.toggle('open'); };
         window.toggleMP = () => { document.getElementById('mp-panel').classList.toggle('open'); };
-        const TOOL_LABELS = { plow: '⛏️ HOE', seed: '🌱 SEED', water: '💧 WATER', hammer: '🔨 HAMMER', fence: '🚧 FENCE', shears: '✂️ SHEARS' };
+        const TOOL_LABELS = { hand: '✋ HAND', plow: '⛏️ HOE', seed: '🌱 SEED', water: '💧 WATER', hammer: '🔨 HAMMER', fence: '🚧 FENCE', shears: '✂️ SHEARS' };
         function toolLabel(t) { return TOOL_LABELS[t] || t.toUpperCase(); }
 
         window.selectTool = (t) => {
+            if (!toolOwned(t)) {
+                const info = TOOL_SHOP[t];
+                flashStatus(`${info.name} not owned — buy at Star Market (${info.price}c).`);
+                document.getElementById('tool-list').classList.remove('open');
+                return;
+            }
             window.activeTool = t; document.querySelectorAll('.tool').forEach(el => el.classList.remove('active'));
             document.getElementById(`tool-${t}`).classList.add('active');
             document.getElementById('status').innerText = toolLabel(t);
@@ -1253,6 +1366,7 @@
                 day: gameState.day, money: gameState.money, stamina: gameState.stamina.current,
                 staminaMax: gameState.stamina.max, totalHarvests: gameState.totalHarvests,
                 inventory: gameState.inventory, pendingSale: gameState.pendingSale, selectedCrop: gameState.selectedCrop,
+                tools: gameState.tools,
                 playerPos: v3(player.position),
                 planets: planets.map(p => ({ stage: p.userData.stage, pending: p.userData.pending, maturedHere: p.userData.maturedHere || 0 })),
                 props: [], weeds: [], mounds: [], fences: [], crops: [], berries: [], creatures: []
@@ -1422,6 +1536,7 @@
             if (!gameState.inventory.produce) gameState.inventory.produce = {};
             if (typeof gameState.inventory.crystal !== 'number') gameState.inventory.crystal = 0;
             gameState.pendingSale = data.pendingSale || {};
+            if (data.tools) gameState.tools = Object.assign({ shears: false }, data.tools);
             if (data.selectedCrop && CROP_DEFS[data.selectedCrop]) selectCrop(data.selectedCrop);
             rebuildWorldObjects(data);
             if (data.playerPos) player.position.set(data.playerPos.x, data.playerPos.y, data.playerPos.z);
@@ -1667,6 +1782,7 @@
             if (msg.tool === 'deposit') { depositProduce(); return; }
             if (msg.tool === 'sellall') { storeSellAll(); return; }
             if (msg.tool === 'buy') { storeBuy(msg.item); return; }
+            if (msg.tool === 'buytool') { storeBuyTool(msg.item); return; }
             if (msg.tool === 'plow') {
                 const p = planets[msg.planetIdx]; if (!p) return;
                 doPlow(p, new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), new THREE.Vector3(msg.norm.x, msg.norm.y, msg.norm.z), false);
@@ -1748,7 +1864,8 @@
         function handleGuestAction(obj, type) {
             if (type === 'sheep') {
                 if (window.activeTool === 'shears') sendMPAction({ tool: 'shear', pos: v3(obj.position) });
-                else pickUpSheep(obj);
+                else if (window.activeTool === 'hand') pickUpSheep(obj);
+                else flashStatus('Use ✋ to lift, ✂️ to shear.');
                 return true;
             }
             if (type === 'berry') { eatBerry(obj); return true; }
@@ -1806,6 +1923,13 @@
                     lines.push(`${goodName(id)} x${qty} — ${val}c`);
                 }
             }
+            const shearBtn = document.getElementById('buy-shears');
+            if (shearBtn) {
+                const owned = toolOwned('shears');
+                shearBtn.innerText = owned ? 'Owned' : 'Buy 500c';
+                shearBtn.disabled = owned;
+                shearBtn.style.opacity = owned ? '0.5' : '1';
+            }
             document.getElementById('store-produce').innerHTML =
                 lines.length ? lines.join('<br>') + `<br><b>Total: ${total}c</b>` : 'No produce to sell.';
         }
@@ -1828,6 +1952,19 @@
             gameState.money += earned;
             playSFX('pop'); updateInventory(); refreshStorePanel();
             storeStatus(`Sold for ${earned}c!`);
+            broadcastWorldSync();
+        };
+
+        window.storeBuyTool = (t) => {
+            if (isGuest()) { sendMPAction({ tool: 'buytool', item: t }); storeStatus('Sent to the farm owner.'); return; }
+            if (toolOwned(t)) { storeStatus(`${TOOL_SHOP[t].name} already owned.`); return; }
+            const price = TOOL_SHOP[t].price;
+            if (gameState.money < price) { storeStatus(`Need ${price}c.`); return; }
+            gameState.money -= price;
+            gameState.tools[t] = true;
+            refreshToolLocks();
+            playSFX('pop'); updateInventory(); refreshStorePanel();
+            storeStatus(`Bought ${TOOL_SHOP[t].name}!`);
             broadcastWorldSync();
         };
 
@@ -2119,7 +2256,7 @@
         };
 
         function spotBlocked(pos, tool) {
-            const minDist = tool === 'fence' ? 0.5 : 0.85;
+            const minDist = tool === 'fence' ? 0.85 : 0.85;
             return interactables.some(i => i.position.distanceTo(pos) < minDist);
         }
 
@@ -2148,18 +2285,42 @@
             return true;
         }
 
+        const FENCE_SPAN = 1.4;        // rail length, so neighbours can butt up against each other
+        const FENCE_SNAP = 2.6;        // distance within which a new fence aligns to an old one
+
+        function nearestFence(pos, planet) {
+            let best = null, bd = FENCE_SNAP;
+            interactables.forEach(o => {
+                if (o.userData.type !== 'fence' || o.userData.planet !== planet) return;
+                const d = o.position.distanceTo(pos);
+                if (d < bd) { bd = d; best = o; }
+            });
+            return best;
+        }
+
         function doFence(p, pos, norm, lookFrom) {
             if (spotBlocked(pos, 'fence')) return false;
             if (gameState.inventory.wood <= 0) { flashStatus('Need wood!'); return false; }
             gameState.inventory.wood--; updateInventory();
             const fence = new THREE.Group();
             const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1, 0.25), new THREE.MeshToonMaterial({color: 0x5d4037}));
-            const rail = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, 0.1), new THREE.MeshToonMaterial({color: 0x795548}));
-            const fa = post.clone(); fa.position.x = -0.6; const fb = post.clone(); fb.position.x = 0.6; rail.position.y = 0.3;
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(FENCE_SPAN, 0.25, 0.1), new THREE.MeshToonMaterial({color: 0x795548}));
+            const fa = post.clone(); fa.position.x = -FENCE_SPAN/2; const fb = post.clone(); fb.position.x = FENCE_SPAN/2; rail.position.y = 0.3;
             fence.add(fa, fb, rail); fence.position.copy(pos);
             const q = new THREE.Quaternion();
-            const look = lookFrom.clone().sub(pos).projectOnPlane(norm).normalize();
-            const m = new THREE.Matrix4().lookAt(pos, pos.clone().add(look), norm); q.setFromRotationMatrix(m);
+            // Align with an adjacent fence when there is one, so runs read as a built pen
+            // rather than a scatter of posts facing wherever the player happened to stand.
+            const neighbour = nearestFence(pos, p);
+            if (neighbour) {
+                q.copy(neighbour.quaternion);
+                // re-seat onto this planet's surface normal at the new spot
+                const nq = new THREE.Quaternion().setFromUnitVectors(
+                    new THREE.Vector3(0,1,0).applyQuaternion(q), norm);
+                q.premultiply(nq);
+            } else {
+                const look = lookFrom.clone().sub(pos).projectOnPlane(norm).normalize();
+                const m = new THREE.Matrix4().lookAt(pos, pos.clone().add(look), norm); q.setFromRotationMatrix(m);
+            }
             fence.quaternion.copy(q); fence.userData = { type: 'fence', planet: p };
             fence.scale.set(0,0,0); scene.add(fence); interactables.push(fence);
             activeAnims.push({ obj: fence, time: 0, targetY: 1, targetXZ: 1, type: 'pop' });
@@ -2184,13 +2345,19 @@
                 // Resolve to whichever object actually OWNS the userData — a tap can land on an
                 // outline shell (a child mesh with no userData of its own), so we walk up to
                 // the real mound/crop/prop/etc rather than operating on the outline by mistake.
-                const rawObj = hit.object;
-                const obj = rawObj.userData.type ? rawObj : (rawObj.parent || rawObj);
+                const obj = resolveTarget(hit.object);
+                if (!obj) return;                 // nothing meaningful was tapped
                 const type = obj.userData.type;
 
                 if (isGuest()) { handleGuestAction(obj, type); return; }
 
-                if (type === 'bed') {
+                if (type === 'sheep') {
+                    if (window.activeTool === 'shears') shearSheep(obj);
+                    else if (window.activeTool === 'hand') pickUpSheep(obj);
+                    else flashStatus('Use ✋ to lift, ✂️ to shear.');
+                } else if (type === 'berry') {
+                    eatBerry(obj);
+                } else if (type === 'bed') {
                     if (gameState.stamina.current >= gameState.stamina.max) {
                         flashStatus("Not tired yet — do some work first!");
                     } else {
@@ -2339,6 +2506,7 @@
             console.warn('Regenerating world after failed load.');
             planets.forEach(p => spawnDecoration(p));
         }
+        refreshToolLocks();
         updateTerraformHUD();
         updateInventory();
 
@@ -2398,7 +2566,8 @@
             // The skybox is an unlit material, so it must be dimmed manually or midnight
             // looks exactly as bright as noon.
             nebMat.color.setScalar(0.22 + daylight * 0.78);
-            stars.material.opacity = Math.max(0.25, 1 - daylight * 0.85);
+            const starVis = Math.max(0.25, 1 - daylight * 0.85);
+            starLayers.forEach(l => { l.material.opacity = starVis * l.userData.baseOpacity; });
 
             celestialSun.position.set(Math.cos(sunAngle)*1200, Math.sin(sunAngle)*1200, 0);
             celestialMoon.position.set(Math.cos(moonAngle)*1200, Math.sin(moonAngle)*1200, 0);
