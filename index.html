@@ -127,6 +127,8 @@
         #crop-bar.open { display: flex; }
         .crop-btn { width: 42px; height: 42px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 20px; background: rgba(0,0,0,0.5); color: white; cursor: pointer; }
         .crop-btn.active { background: #fff; transform: scale(1.1); }
+        .crop-none { color: #fff; font-size: 12px; opacity: 0.7; padding: 6px 4px; }
+        #crop-bar { max-width: 92vw; flex-wrap: wrap; justify-content: center; }
         
         #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; border: 2px solid rgba(255,255,255,0.8); border-radius: 50%; pointer-events: none; z-index: 100; display: none; }
 
@@ -188,11 +190,7 @@
         <div class="tool" id="tool-fence" onclick="selectTool('fence')">🚧</div>
         <div class="tool" id="tool-shears" onclick="selectTool('shears')">✂️</div>
     </div>
-    <div id="crop-bar">
-        <div class="crop-btn active" data-crop="turnip" onclick="selectCrop('turnip')">🥬</div>
-        <div class="crop-btn" data-crop="tomato" onclick="selectCrop('tomato')">🍅</div>
-        <div class="crop-btn" data-crop="pumpkin" onclick="selectCrop('pumpkin')">🎃</div>
-    </div>
+    <div id="crop-bar"></div>
 
     <div id="store-panel">
         <div class="panel-title">🛒 Star Market</div>
@@ -349,13 +347,38 @@
         let camPitch = 0.2, camZoom = 18, initialPinchDist = null;
 
         // --- CORE LOOP DATA ---
+        const SEASON_LEN = 14;
+        const SEASONS = [
+            { key: 'spring', name: 'Spring', icon: '🌸' },
+            { key: 'summer', name: 'Summer', icon: '☀️' },
+            { key: 'fall',   name: 'Fall',   icon: '🍂' },
+            { key: 'winter', name: 'Winter', icon: '❄️' }
+        ];
+        const ALL_SEASONS = ['spring', 'summer', 'fall', 'winter'];
+        function seasonIndex(day) { return Math.floor((day - 1) / SEASON_LEN) % SEASONS.length; }
+        function currentSeason() { return SEASONS[seasonIndex(gameState.day)]; }
+        function currentYear() { return Math.floor((gameState.day - 1) / (SEASON_LEN * SEASONS.length)) + 1; }
+        function dayOfSeason() { return ((gameState.day - 1) % SEASON_LEN) + 1; }
+
         const CROP_DEFS = {
-            turnip:  { name: 'Turnip',  color: 0xd8a7f0, growDays: 2, regrowDays: 0, seedCost: 10, sellPrice: 25 },
-            tomato:  { name: 'Tomato',  color: 0xff6347, growDays: 4, regrowDays: 3, seedCost: 25, sellPrice: 45 },
-            pumpkin: { name: 'Pumpkin', color: 0xff8c00, growDays: 6, regrowDays: 0, seedCost: 60, sellPrice: 200 }
+            turnip:    { name: 'Turnip',    icon: '🥬', color: 0xd8a7f0, growDays: 2, regrowDays: 0, seedCost: 10,  sellPrice: 25,  seasons: ALL_SEASONS },
+            carrot:    { name: 'Carrot',    icon: '🥕', color: 0xff9640, growDays: 3, regrowDays: 0, seedCost: 12,  sellPrice: 32,  seasons: ['spring'] },
+            potato:    { name: 'Potato',    icon: '🥔', color: 0xc9a227, growDays: 3, regrowDays: 0, seedCost: 15,  sellPrice: 40,  seasons: ['spring','summer'] },
+            tomato:    { name: 'Tomato',    icon: '🍅', color: 0xff6347, growDays: 4, regrowDays: 3, seedCost: 25,  sellPrice: 45,  seasons: ['spring','summer'] },
+            corn:      { name: 'Corn',      icon: '🌽', color: 0xffe066, growDays: 5, regrowDays: 3, seedCost: 40,  sellPrice: 70,  seasons: ['summer'] },
+            pumpkin:   { name: 'Pumpkin',   icon: '🎃', color: 0xff8c00, growDays: 6, regrowDays: 0, seedCost: 60,  sellPrice: 200, seasons: ['fall'] },
+            icemelon:  { name: 'Ice Melon', icon: '🍈', color: 0xa8e6ff, growDays: 5, regrowDays: 0, seedCost: 45,  sellPrice: 130, seasons: ['winter'] },
+            starfruit: { name: 'Starfruit', icon: '⭐', color: 0xffd700, growDays: 8, regrowDays: 0, seedCost: 150, sellPrice: 650, seasons: ALL_SEASONS }
         };
+        function inSeason(id, day) {
+            const d = CROP_DEFS[id];
+            return !!d && d.seasons.includes(SEASONS[seasonIndex(day === undefined ? gameState.day : day)].key);
+        }
+        function plantableCrops() { return Object.keys(CROP_DEFS).filter(id => inSeason(id)); }
         const GOODS = { wool: { name: 'Wool', sellPrice: 90 } };   // non-crop sellables
-        const ITEM_ICONS = { turnip: '🥬', tomato: '🍅', pumpkin: '🎃', wool: '🧶' };
+        const ITEM_ICONS = new Proxy({ wool: '🧶' }, {
+            get: (t, k) => t[k] || (CROP_DEFS[k] && CROP_DEFS[k].icon) || '•'
+        });
         function goodName(id) { return CROP_DEFS[id] ? CROP_DEFS[id].name : (GOODS[id] ? GOODS[id].name : id); }
         function sellPriceOf(id) { return CROP_DEFS[id] ? CROP_DEFS[id].sellPrice : (GOODS[id] ? GOODS[id].sellPrice : 0); }
 
@@ -382,6 +405,28 @@
         ];
         const MAX_STAGE = STAGES.length - 1;
 
+        const BASE_STAMINA = 60, STAMINA_PER_STAGE = 5, STARTING_STAGES = 5;  // Home Green begins at Bloom
+
+        // Level and max stamina are derived from total terraform progress, so they stay
+        // consistent after a load and can never drift out of sync with the world.
+        function totalStages() {
+            return planets.reduce((n, p) => n + (isTerraformable(p) ? p.userData.stage : 0), 0);
+        }
+        function recomputeLevel(announce) {
+            const earned = Math.max(0, totalStages() - STARTING_STAGES);
+            const lvl = 1 + earned;
+            const prev = gameState.level || 1;
+            gameState.level = lvl;
+            const newMax = BASE_STAMINA + earned * STAMINA_PER_STAGE;
+            if (newMax !== gameState.stamina.max) {
+                const gain = newMax - gameState.stamina.max;
+                gameState.stamina.max = newMax;
+                if (gain > 0) gameState.stamina.current = Math.min(newMax, gameState.stamina.current + gain);
+            }
+            if (announce && lvl > prev) flashStatus(`⭐ Farm Level ${lvl}! Max energy ${newMax}`);
+            return lvl;
+        }
+
         function sizeFactor(p) { return p.userData.radius / 10; }
         function maxPlots(p) { return Math.floor(p.userData.radius * 2.5); }
         function plotCap(p) { return Math.floor(maxPlots(p) * STAGES[p.userData.stage].plotFrac); }
@@ -405,7 +450,10 @@
         const PLANET_GATES = {                            // absent = farmable with no requirements
             'EMBER ROCK':  { day: 10, harvests: 15 },
             'RED WASTES':  { day: 25, harvests: 50,  requires: [{ planet: 'EMBER ROCK', stage: 2 }] },
-            'BLUE CRAGS':  { day: 50, harvests: 120, requiresCount: { stage: 3, count: 2 } }
+            'BLUE CRAGS':  { day: 50, harvests: 120, requiresCount: { stage: 3, count: 2 } },
+            'AQUA DRIFT':    { day: 70,  harvests: 200, requiresCount: { stage: 5, count: 2 } },
+            'WILD MOON':     { day: 100, harvests: 320, requiresCount: { stage: 5, count: 3 } },
+            'VERDANT REACH': { day: 130, harvests: 450, requiresCount: { stage: 5, count: 4 } }
         };
 
         function planetByName(n) { return planets.find(p => p.userData.name === n); }
@@ -443,6 +491,7 @@
             day: 1,
             totalHarvests: 0,
             money: 100,
+            level: 1,
             stamina: { current: 60, max: 60 },
             inventory: { wood: 10, stone: 5, crystal: 0, berries: 0, produce: {} },
             pendingSale: {},
@@ -769,7 +818,8 @@
 
             if (!rows.length) rows.push('<div class="bag-empty">Your bag is empty.</div>');
             const st = Math.round(gameState.stamina.current);
-            rows.push(`<div class="bag-head">⚡ Energy ${st}/${gameState.stamina.max}</div>`);
+            rows.push(`<div class="bag-head">⚡ Energy ${st}/${gameState.stamina.max} · ⭐ Level ${gameState.level || 1}</div>`);
+            rows.push(`<div class="bag-head">${currentSeason().icon} ${currentSeason().name}, day ${dayOfSeason()} of ${SEASON_LEN} · Year ${currentYear()}</div>`);
             el.innerHTML = rows.join('');
         }
 
@@ -799,6 +849,54 @@
             scene.add(sheep); creatures.push(sheep); interactables.push(sheep);
             updateSheepLook(sheep);
             return sheep;
+        }
+
+        // Sheep pick a heading, amble along it in little hops, pause, then pick a new one.
+        // Penned sheep are tethered to the pen centre so they mill about without escaping.
+        // Tuning: lower STEP = slower amble, longer REST = more loitering,
+        // shorter MOVE = briefer bursts of walking.
+        const SHEEP_STEP = 0.005, PEN_TETHER = 0.16;   // fallback radius if a pen has no size yet
+        const SHEEP_REST_MIN = 180, SHEEP_REST_VAR = 300;
+        const SHEEP_MOVE_MIN = 30,  SHEEP_MOVE_VAR = 60;
+
+        function wanderSheep(s, hop) {
+            const u = s.userData;
+            if (u.restUntil === undefined) { u.restUntil = 0; u.heading = null; }
+            u.wanderClock = (u.wanderClock || 0) + 1;
+
+            if (u.wanderClock > u.restUntil) {
+                // new heading, tangent to the planet at the sheep's current spot
+                const up = u.offset.clone().normalize();
+                let t = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5);
+                t.sub(up.clone().multiplyScalar(t.dot(up)));
+                if (t.lengthSq() < 1e-6) t.set(1, 0, 0);
+                u.heading = t.normalize();
+                u.restUntil = u.wanderClock + SHEEP_REST_MIN + Math.random() * SHEEP_REST_VAR;
+                u.moveUntil = u.wanderClock + SHEEP_MOVE_MIN + Math.random() * SHEEP_MOVE_VAR;
+            }
+
+            const moving = u.wanderClock < (u.moveUntil || 0);
+            if (moving && hop > 0 && u.heading) {
+                u.offset.addScaledVector(u.heading, SHEEP_STEP).normalize();
+                if (u.penned && u.penCentre) {
+                    // Hard boundary, not a nudge. The old soft lerp let sheep leak out, and
+                    // bouncing to a fresh RANDOM heading often pointed straight back outward.
+                    const home = u.penCentre.clone().sub(u.planet.position).normalize();
+                    const limit = u.penTether || PEN_TETHER;
+                    const d = u.offset.distanceTo(home);
+                    if (d > limit) {
+                        // clamp exactly onto the boundary
+                        u.offset.copy(home).lerp(u.offset, limit / d).normalize();
+                        // and steer back inward instead of re-rolling at random
+                        const up = u.offset.clone();
+                        const inward = home.clone().sub(up.clone().multiplyScalar(home.dot(up)));
+                        if (inward.lengthSq() > 1e-6) u.heading = inward.normalize();
+                        u.moveUntil = u.wanderClock + 25;
+                        u.restUntil = u.wanderClock + 25 + Math.random() * SHEEP_REST_VAR;
+                    }
+                }
+            }
+            u.moving = moving;
         }
 
         function updateSheepLook(s) {
@@ -836,7 +934,23 @@
             const wasPenned = s.userData.penned;
             const near = fencesNear(s.position, s.userData.planet).length;
             s.userData.penned = near >= PEN_FENCES && penSectorsCovered(s) >= PEN_SECTORS_NEEDED;
-            if (!s.userData.penned) { s.userData.woolDays = 0; s.userData.hasWool = false; }
+            if (s.userData.penned) {
+                const fs = fencesNear(s.position, s.userData.planet);
+                const c = new THREE.Vector3();
+                fs.forEach(f => c.add(f.position));
+                c.multiplyScalar(1 / fs.length);
+                s.userData.penCentre = c;
+                // Tether scaled to the real pen: mean centre-to-fence distance, kept well
+                // inside the ring, converted from world units to unit-sphere distance.
+                let mean = 0;
+                fs.forEach(f => { mean += f.position.distanceTo(c); });
+                mean /= fs.length;
+                const R = s.userData.planet.userData.radius || 15;
+                s.userData.penTether = Math.max(0.03, Math.min(0.30, (mean * 0.6) / R));
+            } else {
+                s.userData.penCentre = null;
+                s.userData.woolDays = 0; s.userData.hasWool = false;
+            }
             updateSheepLook(s);
             return s.userData.penned && !wasPenned;
         }
@@ -978,6 +1092,7 @@
             if (propsRemaining(p) > 0) return;
             p.userData.stage = 1;
             applyTerraformVisual(p);
+            recomputeLevel(true);
             playSFX('pop');
             flashStatus(`${p.userData.name} cleared!`);
             if (p === currentPlanet) updateTerraformHUD();
@@ -1060,6 +1175,7 @@
             } else {
                 p.userData.stage++;
                 applyTerraformVisual(p);
+                recomputeLevel(true);
                 mapNote(`${p.userData.name} advanced to ${STAGES[p.userData.stage].name}!`);
             }
             playSFX('pop');
@@ -1076,6 +1192,7 @@
 
         // Runs at day rollover: ticks processors and completes finished projects.
         function advanceTerraformDay() {
+            const stagesBefore = totalStages();
             planets.forEach(p => {
                 const pend = p.userData.pending;
                 if (!pend) return;
@@ -1093,9 +1210,11 @@
                 if ((p.userData.maturedHere || 0) >= c.crops) {
                     p.userData.stage = 5;
                     applyTerraformVisual(p);
-                    gameState.stamina.max += 10;   // personal power grows with the galaxy
                 }
             });
+            refreshClearedStages();
+            if (totalStages() !== stagesBefore) recomputeLevel(true);
+            revealNewWorlds();
             updateTerraformHUD();
         }
 
@@ -1156,7 +1275,7 @@
 
         // Read and validate the save BEFORE building the world. If it's unreadable we must
         // still generate trees/rocks/weeds, otherwise a bad save leaves totally barren planets.
-        const SAVE_VERSION = 6;
+        const SAVE_VERSION = 7;
         const BOOT_FLAG = 'galaxyFarmBooting';
         let pendingSave = null, saveQuarantined = false;
 
@@ -1199,6 +1318,34 @@
         const p4 = createPlanet(90, -50, 90, 8, 0xc1440e, "EMBER ROCK", 9, 0, hasSave);
         const p5 = createPlanet(-110, -30, 60, 18, 0xb39ddb, "STAR MARKET", 6, 5, hasSave);
         p4.userData.isMine = true;   // only source of crystal — a permanent supply line
+
+        // Late-game worlds exist from the start so save indices stay stable, but stay hidden
+        // until their requirements are met. Appended last, never inserted.
+        const p6 = createPlanet(40, 110, 40, 12, 0x2b7f9e, "AQUA DRIFT", 10, 0, true);
+        const p7 = createPlanet(-130, 70, -120, 7, 0x9fa8da, "WILD MOON", 7, 0, true);
+        const p8 = createPlanet(150, -20, -60, 20, 0x7cb342, "VERDANT REACH", 20, 0, true);
+        const LATE_WORLDS = [p6, p7, p8];
+        LATE_WORLDS.forEach(p => { p.userData.late = true; p.userData.discovered = false; });
+
+        function setWorldVisible(p, on) {
+            p.visible = on;
+            if (p.userData.atmoInner) p.userData.atmoInner.visible = on;
+            if (p.userData.atmoHalo) p.userData.atmoHalo.visible = on;
+        }
+        LATE_WORLDS.forEach(p => setWorldVisible(p, false));
+        function isHidden(p) { return !!p.userData.late && !p.userData.discovered; }
+
+        // A world reveals itself the moment its gate requirements are satisfied.
+        function revealNewWorlds() {
+            LATE_WORLDS.forEach(p => {
+                if (p.userData.discovered || gateStatus(p).locked) return;
+                p.userData.discovered = true;
+                setWorldVisible(p, true);
+                if (!p.userData.seeded) { spawnDecoration(p); for (let i = 0; i < 2; i++) spawnSheep(p); p.userData.seeded = true; }
+                playNewDayChime();
+                flashStatus(`🔭 New world discovered: ${p.userData.name}!`);
+            });
+        }
         spawnFarmStructures(p1);
         spawnShop(p5);
         let currentPlanet = p1;
@@ -1222,9 +1369,11 @@
             if (!el) return;
             // what's in the bag right now, so wool and produce are visible without opening a shop
             // Materials at a glance; produce and berries stay in the bag panel.
+            const se = currentSeason();
             el.innerHTML =
                 `🪓${gameState.inventory.wood} 🪨${gameState.inventory.stone}${crystal ? ' 💎' + crystal : ''}<br>` +
-                `💰${gameState.money} 📅${gameState.day}<br>` +
+                `💰${gameState.money} ⭐${gameState.level || 1}<br>` +
+                `${se.icon}${dayOfSeason()} Y${currentYear()}<br>` +
                 `⚡<span class="stat-bar"><span class="stat-bar-fill" style="width:${pct}%"></span></span>`;
         }
         
@@ -1279,13 +1428,29 @@
             document.getElementById(`tool-${t}`).classList.add('active');
             document.getElementById('status').innerText = toolLabel(t);
             document.getElementById('tool-list').classList.remove('open');
+            if (t === 'seed') rebuildCropBar();
             document.getElementById('crop-bar').classList.toggle('open', t === 'seed');
             refreshSpinButton();
         };
+        // Only this season's crops are offered, which teaches the calendar without a tutorial.
+        function rebuildCropBar() {
+            const bar = document.getElementById('crop-bar');
+            if (!bar) return;
+            const avail = plantableCrops();
+            if (!avail.includes(gameState.selectedCrop)) gameState.selectedCrop = avail[0] || 'turnip';
+            bar.innerHTML = avail.map(id => {
+                const d = CROP_DEFS[id];
+                const on = id === gameState.selectedCrop ? ' active' : '';
+                return `<div class="crop-btn${on}" data-crop="${id}" onclick="selectCrop('${id}')" title="${d.name}">${d.icon}</div>`;
+            }).join('') || '<div class="crop-none">Nothing grows this season</div>';
+        }
+
         window.selectCrop = (id) => {
+            if (!CROP_DEFS[id]) return;
+            if (!inSeason(id)) { flashStatus(`${CROP_DEFS[id].name} is not a ${currentSeason().name.toLowerCase()} crop.`); return; }
             gameState.selectedCrop = id;
-            document.querySelectorAll('.crop-btn').forEach(el => el.classList.remove('active'));
-            document.querySelector(`.crop-btn[data-crop="${id}"]`).classList.add('active');
+            document.querySelectorAll('.crop-btn').forEach(el => el.classList.toggle('active', el.dataset.crop === id));
+            flashStatus(`${CROP_DEFS[id].icon} ${CROP_DEFS[id].name} — ${CROP_DEFS[id].seedCost}c`);
         };
 
         window.addEventListener('keydown', (e) => controls.keys[e.code] = true);
@@ -1611,7 +1776,13 @@
             growWool();
 
             gameState.stamina.current = Math.round(gameState.stamina.max * frac);
+            const seasonBefore = seasonIndex(gameState.day);
             gameState.day++;
+            if (seasonIndex(gameState.day) !== seasonBefore) {
+                const se = currentSeason();
+                flashStatus(`${se.icon} ${se.name} has arrived!`);
+            }
+            rebuildCropBar();
             worldTime = 0;
             nightWarned = false;
             playNewDayChime();
@@ -1636,7 +1807,7 @@
                 inventory: gameState.inventory, pendingSale: gameState.pendingSale, selectedCrop: gameState.selectedCrop,
                 tools: gameState.tools,
                 playerPos: v3(player.position),
-                planets: planets.map(p => ({ stage: p.userData.stage, pending: p.userData.pending, maturedHere: p.userData.maturedHere || 0 })),
+                planets: planets.map(p => ({ stage: p.userData.stage, pending: p.userData.pending, maturedHere: p.userData.maturedHere || 0, discovered: !!p.userData.discovered, seeded: !!p.userData.seeded })),
                 props: [], weeds: [], mounds: [], fences: [], crops: [], berries: [], creatures: []
             };
             const moundIndexMap = new Map();
@@ -1716,6 +1887,11 @@
                 planets[i].userData.stage = Math.max(0, Math.min(MAX_STAGE, pd.stage ?? 0));
                 planets[i].userData.pending = pd.pending || null;
                 planets[i].userData.maturedHere = pd.maturedHere || 0;
+                if (planets[i].userData.late) {
+                    planets[i].userData.discovered = !!pd.discovered;
+                    planets[i].userData.seeded = !!pd.seeded;
+                    setWorldVisible(planets[i], !!pd.discovered);
+                }
                 applyTerraformVisual(planets[i]);
             });
 
@@ -2338,12 +2514,13 @@
 
             // scale real galaxy coords down into a tidy map volume
             const box = new THREE.Box3();
-            planets.forEach(p => box.expandByPoint(p.position));
+            planets.forEach(p => { if (!isHidden(p)) box.expandByPoint(p.position); });
             const center = box.getCenter(new THREE.Vector3());
             const size = Math.max(box.getSize(new THREE.Vector3()).length(), 1);
             const scale = 22 / size;
 
             planets.forEach(p => {
+                if (isHidden(p)) return;
                 const holder = new THREE.Group();
                 holder.position.copy(p.position).sub(center).multiplyScalar(scale);
 
@@ -2870,6 +3047,8 @@
                     removeFence(obj);
                 } else if (window.activeTool === 'seed' && type === 'mound' && !obj.userData.hasCrop) {
                     const def = CROP_DEFS[gameState.selectedCrop];
+                    if (!def) { flashStatus('Pick a seed first.'); return; }
+                    if (!inSeason(gameState.selectedCrop)) { flashStatus(`${def.name} won't grow in ${currentSeason().name}.`); return; }
                     if (gameState.money < def.seedCost) { flashStatus(`Need ${def.seedCost}c for ${def.name}`); return; }
                     gameState.money -= def.seedCost;
                     plantCrop(obj, gameState.selectedCrop);
@@ -2946,6 +3125,9 @@
             console.warn('Regenerating world after failed load.');
             planets.forEach(p => spawnDecoration(p));
         }
+        recomputeLevel(false);
+        revealNewWorlds();
+        rebuildCropBar();
         refreshToolLocks();
         updateTerraformHUD();
         updateInventory();
@@ -3041,8 +3223,9 @@
                     s.scale.set(0.75, 0.75, 0.75);
                     return;
                 }
-                s.userData.jumpTime += 0.05; 
+                s.userData.jumpTime += 0.05;
                 const hop = Math.sin(s.userData.jumpTime * 3); const hopHeight = Math.max(0, hop) * 0.6;
+                wanderSheep(s, hop);
                 s.position.lerp(s.userData.offset.clone().multiplyScalar(s.userData.planet.userData.radius + 0.6 + hopHeight).add(s.userData.planet.position), 0.2);
                 s.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), s.userData.offset);
                 const stretch = 1 + Math.max(0, hop) * 0.3; const squish = 1 - Math.max(0, hop) * 0.15;
@@ -3078,7 +3261,7 @@
             }
 
             let closest = currentPlanet, dMin = Infinity;
-            planets.forEach(p => { const d = player.position.distanceTo(p.position); if(d < dMin) { dMin = d; closest = p; }});
+            planets.forEach(p => { if (isHidden(p)) return; const d = player.position.distanceTo(p.position); if(d < dMin) { dMin = d; closest = p; }});
             if (closest !== currentPlanet) { currentPlanet = closest; document.getElementById('planet-name').innerText = currentPlanet.userData.name; updateTerraformHUD(); }
 
             const up = player.position.clone().sub(currentPlanet.position).normalize();
@@ -3104,7 +3287,7 @@
             targetPlanet = null; jumpLine.visible = false;
             const fwd = new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);
             planets.forEach(p => {
-                if(p === currentPlanet) return;
+                if(p === currentPlanet || isHidden(p)) return;
                 if(fwd.dot(p.position.clone().sub(player.position).normalize()) > 0.85) { 
                     targetPlanet = p; jumpLine.visible = true; 
                     const mid = player.position.clone().add(p.position).multiplyScalar(0.5).add(up.clone().multiplyScalar(10));
