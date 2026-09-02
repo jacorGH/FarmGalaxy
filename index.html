@@ -57,6 +57,21 @@
         .radial-hub { position: absolute; width: 22px; height: 22px; margin-left: -11px; margin-top: -11px;
             border-radius: 50%; background: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.7); }
 
+        /* STORAGE CHEST */
+        #store-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 790; display: none; }
+        #store-backdrop.open { display: block; }
+        #storage-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: min(330px, 90vw); max-height: 74vh; overflow-y: auto;
+            background: rgba(14,7,24,0.97); border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 18px; padding: 16px; color: #fff; z-index: 800;
+            display: none; flex-direction: column; gap: 7px; font-size: 13px;
+            box-shadow: 0 18px 60px rgba(0,0,0,0.75); }
+        #storage-panel.open { display: flex; }
+        #storage-note { min-height: 15px; font-size: 11px; color: #ffe08a; text-align: center; }
+        .sto-btn { border: none; border-radius: 8px; color: #fff; font-weight: bold; font-size: 11px; padding: 5px 9px; cursor: pointer; }
+        .sto-in { background: #5c6bc0; }
+        .sto-out { background: #43a047; }
+
         /* BAG — a real window over the game, not a corner box */
         #bag-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: min(320px, 88vw); max-height: 72vh; overflow-y: auto;
@@ -99,8 +114,15 @@
         .map-label { position: absolute; transform: translate(-50%, 0); font-size: 11px; font-weight: bold; text-align: center; text-shadow: 0 2px 4px #000; white-space: nowrap; }
         .map-label .pct { opacity: 0.85; font-weight: normal; }
         #map-bottom { flex: 0 0 auto; width: 100%; box-sizing: border-box; padding: 4px 0 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; max-height: 46vh; overflow-y: auto; }
+        #map-stats { font-size: 11px; line-height: 1.6; text-align: center; padding: 2px 14px 6px; width: 100%; box-sizing: border-box; }
+        #map-stats .sd { font-size: 13px; font-weight: 900; letter-spacing: 1px; }
+        #map-stats .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; opacity: 0.9; margin-top: 3px; }
         #map-legend { font-size: 10px; opacity: 0.55; padding: 4px 0 2px; text-align: center; }
         #map-actions { display: flex; gap: 10px; padding: 2px 0 0; }
+        #test-tools { margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.18); width: 100%; box-sizing: border-box; text-align: center; }
+        .tt-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.5; margin-bottom: 5px; }
+        .tt-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; padding: 0 10px; }
+        .mp-btn.tt { background: #5c6bc0; font-size: 10px; padding: 6px 8px; }
         #map-actions .mp-btn { min-width: 118px; }
         .mp-danger { background: #b23c3c; }
         #map-detail { font-size: 12px; padding: 2px 16px 4px; text-align: center; min-height: 30px; opacity: 0.98; line-height: 1.55; }
@@ -113,6 +135,8 @@
         .joystick-base { position: absolute; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%; display: none; border: 2px solid rgba(255,255,255,0.2); z-index: 51; pointer-events: none; }
         .joystick-knob { position: absolute; width: 32px; height: 32px; background: #fff; border-radius: 50%; left: 24px; top: 24px; opacity: 0.6; }
         
+        #jump-target { position: absolute; bottom: 138px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 12px; font-weight: bold; letter-spacing: 1px; text-shadow: 0 2px 5px #000; background: rgba(0,0,0,0.5); padding: 3px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.3); z-index: 92; pointer-events: none; display: none; white-space: nowrap; }
+        #jump-target.show { display: block; }
         #jump-btn { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 90px; height: 90px; background: rgba(255, 255, 255, 0.15); border: 4px solid white; border-radius: 50%; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 90; backdrop-filter: blur(4px); cursor: pointer; user-select: none; }
 
         #tool-toggle { position: absolute; top: 16px; right: 14px; width: clamp(38px, 11vw, 46px); height: clamp(38px, 11vw, 46px); background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(17px, 5vw, 20px); z-index: 110; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ddd; cursor: pointer; }
@@ -156,6 +180,7 @@
         </div>
     </div>
     <div id="crosshair"></div>
+    <div id="jump-target"></div>
     <div id="jump-btn">JUMP</div>
 
     <div id="tool-toggle" onclick="toggleTools()">🎒</div>
@@ -196,6 +221,7 @@
         <div class="panel-title">🛒 Star Market</div>
         <div id="store-produce">No produce to sell.</div>
         <button class="mp-btn" onclick="storeSellAll()">Sell produce now (90%)</button>
+        <div class="store-row"><span>🧪 Energy Tonic <span id="tonic-info"></span></span><button class="mp-btn mp-small" id="buy-tonic" onclick="buyTonic()">Buy</button></div>
         <div class="mp-or">— tools —</div>
         <div class="store-row"><span>✂️ Shears</span><button class="mp-btn mp-small" id="buy-shears" onclick="storeBuyTool('shears')">Buy 500c</button></div>
         <div class="mp-or">— supplies —</div>
@@ -208,6 +234,13 @@
 
     <div id="radial-backdrop" onclick="closeRadial()"></div>
     <div id="radial"></div>
+    <div id="store-backdrop" onclick="closeStorage()"></div>
+    <div id="storage-panel">
+        <div class="panel-title">📦 Storage Chest</div>
+        <div id="storage-list"></div>
+        <div id="storage-note"></div>
+        <button class="mp-btn mp-close" onclick="closeStorage()">Close</button>
+    </div>
     <div id="bag-backdrop" onclick="toggleBag()"></div>
     <div id="bag-panel">
         <div class="panel-title">🧺 Bag</div>
@@ -221,11 +254,20 @@
         <canvas id="map-canvas"></canvas>
         <div id="map-labels"></div>
         <div id="map-bottom">
+            <div id="map-stats"></div>
             <div id="map-detail"></div>
             <button id="stage-btn" onclick="beginStage()">Begin</button>
             <div id="map-note"></div>
             <div id="map-legend">Ring = terraform progress · 📍 = you are here · tap a planet for details</div>
             <div id="map-actions"><button class="mp-btn mp-small" onclick="manualSave()">💾 Save game</button><button class="mp-btn mp-small mp-danger" onclick="resetSave()">🗑️ Reset</button></div>
+            <div id="test-tools">
+                <div class="tt-label">🧪 Testing tools</div>
+                <div class="tt-row">
+                    <button class="mp-btn mp-small tt" id="tt-speed" onclick="cycleTimeScale()">⏩ Speed 1×</button>
+                    <button class="mp-btn mp-small tt" onclick="skipDay()">⏭ +1 day</button>
+                    <button class="mp-btn mp-small tt" onclick="skipSeason()">⏭⏭ Next season</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -284,7 +326,20 @@
         // --- AUDIO ---
         let audioCtx = null;
         let nextNoteTime = 0, noteIndex = 0;
-        const melody = [261.63, 293.66, 329.63, 392.00, 440.00, 392.00];
+        // Each season gets its own phrase and tempo, so the world sounds different over the year.
+        const SEASON_MUSIC = {
+            spring: { notes: [261.63, 293.66, 329.63, 392.00, 440.00, 392.00], gap: 0.60 },
+            summer: { notes: [329.63, 392.00, 440.00, 493.88, 587.33, 493.88, 440.00], gap: 0.52 },
+            fall:   { notes: [246.94, 293.66, 349.23, 392.00, 349.23, 293.66], gap: 0.68 },
+            winter: { notes: [220.00, 261.63, 329.63, 261.63, 196.00, 261.63], gap: 0.80 }
+        };
+        let melody = SEASON_MUSIC.spring.notes, noteGap = SEASON_MUSIC.spring.gap;
+        function applySeasonMusic() {
+            try {
+                const m = SEASON_MUSIC[currentSeason().key];
+                if (m && m.notes !== melody) { melody = m.notes; noteGap = m.gap; noteIndex = 0; }
+            } catch (e) { /* seasons not ready yet during boot */ }
+        }
 
         window.startGame = () => {
             document.getElementById('start-screen').style.display = 'none';
@@ -301,7 +356,7 @@
             if (!audioCtx) return;
             while (nextNoteTime < audioCtx.currentTime + 0.1) {
                 playNote(melody[noteIndex % melody.length], nextNoteTime);
-                noteIndex++; nextNoteTime += 0.6;
+                noteIndex++; nextNoteTime += noteGap;
             }
             requestAnimationFrame(scheduleAudio);
         }
@@ -355,6 +410,13 @@
             { key: 'winter', name: 'Winter', icon: '❄️' }
         ];
         const ALL_SEASONS = ['spring', 'summer', 'fall', 'winter'];
+        // Gentle per-season colour grade applied to ambient light and the nebula.
+        const SEASON_TINT = {
+            spring: [1.00, 1.06, 0.99],
+            summer: [1.10, 1.02, 0.88],
+            fall:   [1.14, 0.94, 0.80],
+            winter: [0.88, 0.96, 1.16]
+        };
         function seasonIndex(day) { return Math.floor((day - 1) / SEASON_LEN) % SEASONS.length; }
         function currentSeason() { return SEASONS[seasonIndex(gameState.day)]; }
         function currentYear() { return Math.floor((gameState.day - 1) / (SEASON_LEN * SEASONS.length)) + 1; }
@@ -412,12 +474,16 @@
         function totalStages() {
             return planets.reduce((n, p) => n + (isTerraformable(p) ? p.userData.stage : 0), 0);
         }
+        const TONIC_BONUS = 8;
+        function tonicPrice() { return 600 + (gameState.staminaUpgrades || 0) * 450; }
+
         function recomputeLevel(announce) {
             const earned = Math.max(0, totalStages() - STARTING_STAGES);
             const lvl = 1 + earned;
             const prev = gameState.level || 1;
             gameState.level = lvl;
-            const newMax = BASE_STAMINA + earned * STAMINA_PER_STAGE;
+            const newMax = BASE_STAMINA + earned * STAMINA_PER_STAGE
+                         + (gameState.staminaUpgrades || 0) * TONIC_BONUS;
             if (newMax !== gameState.stamina.max) {
                 const gain = newMax - gameState.stamina.max;
                 gameState.stamina.max = newMax;
@@ -492,10 +558,12 @@
             totalHarvests: 0,
             money: 100,
             level: 1,
+            staminaUpgrades: 0,
             stamina: { current: 60, max: 60 },
             inventory: { wood: 10, stone: 5, crystal: 0, berries: 0, produce: {} },
             pendingSale: {},
             selectedCrop: 'turnip',
+            storage: {},
             tools: { shears: false }        // absent/true = owned; shears must be bought
         };
 
@@ -634,31 +702,66 @@
         }
 
         const starLayers = [];
-        function addStarLayer(count, size, kind, tint, baseOpacity) {
-            const pts = [];
+        function addStarLayer(count, size, kind, tint, baseOpacity, twinkle) {
+            const pts = [], cols = [], phases = [];
+            const base = new THREE.Color(tint);
             for (let i = 0; i < count; i++) {
                 const v = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5)
                     .normalize().multiplyScalar(6800 + Math.random()*900);
                 pts.push(v.x, v.y, v.z);
+                cols.push(base.r, base.g, base.b);
+                phases.push(Math.random() * Math.PI * 2);
             }
             const geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
             const mat = new THREE.PointsMaterial({
-                color: tint, size, sizeAttenuation: false, map: starTexture(kind),
+                color: twinkle ? 0xffffff : tint, size, sizeAttenuation: false, map: starTexture(kind),
                 transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
             });
+            if (twinkle) {
+                // Per-point brightness needs vertex colours; PointsMaterial has no per-point alpha.
+                geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+                mat.vertexColors = true;
+            }
             const layer = new THREE.Points(geo, mat);
             layer.userData.baseOpacity = baseOpacity;
             layer.userData.cfg = { size, kind, count };
+            layer.userData.twinkle = !!twinkle;
+            layer.userData.phases = phases;
+            layer.userData.baseColor = base;
+            // Per-star speeds, so they don't all shimmer in lockstep.
+            layer.userData.speeds = phases.map(() => 0.6 + Math.random() * 2.2);
+            layer.userData.speed = 1;
             scene.add(layer); starLayers.push(layer);
             return layer;
         }
 
-        addStarLayer(4200, 2.0, 'dot',     0xffffff, 0.55);  // faint dust
-        addStarLayer(1800, 3.5, 'dot',     0xfff4e2, 0.75);  // warm mid stars
-        addStarLayer(700,  5.5, 'dot',     0xdce8ff, 0.90);  // cool brighter stars
-        addStarLayer(150,  9.0, 'diamond', 0xffffff, 0.85);  // scattered diamonds
-        addStarLayer(90,  15.0, 'sparkle', 0xfff8d8, 1.00);  // rare showpieces
+        // Only the sparse, bright layers twinkle — a few hundred points, so it stays cheap.
+        function updateTwinkle(t) {
+            starLayers.forEach(layer => {
+                if (!layer.userData.twinkle) return;
+                const attr = layer.geometry.getAttribute('color');
+                if (!attr) return;
+                const ph = layer.userData.phases, c = layer.userData.baseColor;
+                const sps = layer.userData.speeds;
+                for (let i = 0; i < ph.length; i++) {
+                    // Squaring the wave makes stars linger dim and flash bright, which reads
+                    // as twinkling far more than a gentle sine ever does.
+                    const w = 0.5 + 0.5 * Math.sin(t * sps[i] + ph[i]);
+                    const k = 0.10 + 0.95 * w * w;
+                    attr.array[i*3]     = c.r * k;
+                    attr.array[i*3 + 1] = c.g * k;
+                    attr.array[i*3 + 2] = c.b * k;
+                }
+                attr.needsUpdate = true;
+            });
+        }
+
+        addStarLayer(4200, 2.0, 'dot',     0xffffff, 0.55, false); // faint dust
+        addStarLayer(1800, 3.5, 'dot',     0xfff4e2, 0.75, false); // warm mid stars
+        addStarLayer(700,  5.5, 'dot',     0xdce8ff, 0.90, true);  // cool brighter stars, twinkling
+        addStarLayer(150,  9.0, 'diamond', 0xffffff, 0.85, true);  // scattered diamonds, twinkling
+        addStarLayer(90,  15.0, 'sparkle', 0xfff8d8, 1.00, true);  // rare showpieces, twinkling
 
         const sunLight = new THREE.DirectionalLight(0xfff5ee, 1.3); sunLight.castShadow = true;
         const moonLight = new THREE.DirectionalLight(0xaebcff, 0.0);
@@ -871,8 +974,9 @@
                 t.sub(up.clone().multiplyScalar(t.dot(up)));
                 if (t.lengthSq() < 1e-6) t.set(1, 0, 0);
                 u.heading = t.normalize();
-                u.restUntil = u.wanderClock + SHEEP_REST_MIN + Math.random() * SHEEP_REST_VAR;
-                u.moveUntil = u.wanderClock + SHEEP_MOVE_MIN + Math.random() * SHEEP_MOVE_VAR;
+                const penned = !!u.penned;
+                u.restUntil = u.wanderClock + SHEEP_REST_MIN * (penned ? 1.3 : 1) + Math.random() * SHEEP_REST_VAR;
+                u.moveUntil = u.wanderClock + SHEEP_MOVE_MIN + Math.random() * SHEEP_MOVE_VAR * (penned ? 0.5 : 1);
             }
 
             const moving = u.wanderClock < (u.moveUntil || 0);
@@ -885,18 +989,40 @@
                     const limit = u.penTether || PEN_TETHER;
                     const d = u.offset.distanceTo(home);
                     if (d > limit) {
-                        // clamp exactly onto the boundary
+                        // Clamp onto the boundary, then REFLECT the heading like a ball off a
+                        // wall. Steering straight inward sent every sheep back to the middle,
+                        // so the whole flock ended up bunched at the pen centre.
                         u.offset.copy(home).lerp(u.offset, limit / d).normalize();
-                        // and steer back inward instead of re-rolling at random
-                        const up = u.offset.clone();
-                        const inward = home.clone().sub(up.clone().multiplyScalar(home.dot(up)));
-                        if (inward.lengthSq() > 1e-6) u.heading = inward.normalize();
-                        u.moveUntil = u.wanderClock + 25;
-                        u.restUntil = u.wanderClock + 25 + Math.random() * SHEEP_REST_VAR;
+                        const upv = u.offset.clone();
+                        let outward = u.offset.clone().sub(home).sub(upv.clone().multiplyScalar(u.offset.clone().sub(home).dot(upv)));
+                        if (outward.lengthSq() > 1e-6 && u.heading) {
+                            outward.normalize();
+                            u.heading.addScaledVector(outward, -2 * u.heading.dot(outward));
+                            const tangent = u.heading.clone().sub(upv.clone().multiplyScalar(u.heading.dot(upv)));
+                            if (tangent.lengthSq() > 1e-6) u.heading = tangent.normalize();
+                        }
+                        u.moveUntil = u.wanderClock + 50 + Math.random() * 40;
                     }
                 }
             }
             u.moving = moving;
+        }
+
+        // Sheep keep a little distance from one another. Throttled to every 5th frame per
+        // sheep, so the pairwise check stays cheap even with a large flock.
+        const SHEEP_SPACING = 0.055, SHEEP_PUSH = 0.35;
+        function spaceOutSheep(s) {
+            if ((s.userData.wanderClock || 0) % 5 !== 0) return;
+            const planet = s.userData.planet;
+            creatures.forEach(o => {
+                if (o === s || o.userData.planet !== planet) return;
+                const diff = s.userData.offset.clone().sub(o.userData.offset);
+                const d = diff.length();
+                if (d > 1e-5 && d < SHEEP_SPACING) {
+                    const push = (SHEEP_SPACING - d) * SHEEP_PUSH;
+                    s.userData.offset.addScaledVector(diff.normalize(), push).normalize();
+                }
+            });
         }
 
         function updateSheepLook(s) {
@@ -912,30 +1038,35 @@
 
         // A count alone let you clump fences on one side and call it a pen. This also checks the
         // fences are spread around the sheep, so you have to actually enclose it.
-        function penSectorsCovered(s) {
-            const planet = s.userData.planet;
-            const near = fencesNear(s.position, planet);
+        function penSectorsCoveredAt(pos, planet) {
+            const near = fencesNear(pos, planet);
             if (!near.length) return 0;
-            const up = s.position.clone().sub(planet.position).normalize();
+            const up = pos.clone().sub(planet.position).normalize();
             let t1 = new THREE.Vector3(0, 1, 0).cross(up);
             if (t1.lengthSq() < 1e-6) t1 = new THREE.Vector3(1, 0, 0).cross(up);
             t1.normalize();
             const t2 = up.clone().cross(t1).normalize();
             const sectors = new Set();
             near.forEach(f => {
-                const d = f.position.clone().sub(s.position);
+                const d = f.position.clone().sub(pos);
                 const a = Math.atan2(d.dot(t2), d.dot(t1));
                 sectors.add(Math.floor(((a + Math.PI) / (Math.PI * 2)) * PEN_SECTORS) % PEN_SECTORS);
             });
             return sectors.size;
         }
+        function penSectorsCovered(s) { return penSectorsCoveredAt(s.position, s.userData.planet); }
 
         function updatePenned(s) {
             const wasPenned = s.userData.penned;
-            const near = fencesNear(s.position, s.userData.planet).length;
-            s.userData.penned = near >= PEN_FENCES && penSectorsCovered(s) >= PEN_SECTORS_NEEDED;
+            // Once a sheep belongs to a pen, judge that pen by its CENTRE rather than by wherever
+            // the sheep happens to be standing. Measuring from its feet meant that wandering to
+            // the edge of the tether dropped the fence count and silently un-penned it — which
+            // released the whole flock at the next day rollover.
+            const probe = (wasPenned && s.userData.penCentre) ? s.userData.penCentre.clone() : s.position.clone();
+            const near = fencesNear(probe, s.userData.planet).length;
+            s.userData.penned = near >= PEN_FENCES && penSectorsCoveredAt(probe, s.userData.planet) >= PEN_SECTORS_NEEDED;
             if (s.userData.penned) {
-                const fs = fencesNear(s.position, s.userData.planet);
+                const fs = fencesNear(probe, s.userData.planet);
                 const c = new THREE.Vector3();
                 fs.forEach(f => c.add(f.position));
                 c.multiplyScalar(1 / fs.length);
@@ -946,7 +1077,7 @@
                 fs.forEach(f => { mean += f.position.distanceTo(c); });
                 mean /= fs.length;
                 const R = s.userData.planet.userData.radius || 15;
-                s.userData.penTether = Math.max(0.03, Math.min(0.30, (mean * 0.6) / R));
+                s.userData.penTether = Math.max(0.03, Math.min(0.30, (mean * 0.45) / R));
             } else {
                 s.userData.penCentre = null;
                 s.userData.woolDays = 0; s.userData.hasWool = false;
@@ -1250,6 +1381,23 @@
             bin.userData = { type: 'bin' };
             bin.castShadow = true;
             scene.add(bin); addOutline(bin, 0.08); interactables.push(bin);
+
+            // Storage chest — keep produce instead of shipping it.
+            const chestNormal = new THREE.Vector3(-0.55, 0.85, -0.1).normalize();
+            const chestPos = chestNormal.clone().multiplyScalar(planet.userData.radius + 0.4).add(planet.position);
+            const chest = new THREE.Group();
+            const box = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.9, 1.0), new THREE.MeshToonMaterial({ color: 0x8d6e63 }));
+            const lid = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.3, 1.05), new THREE.MeshToonMaterial({ color: 0xa1887f }));
+            lid.position.y = 0.6;
+            const latch = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.12), new THREE.MeshToonMaterial({ color: 0xffd54f }));
+            latch.position.set(0, 0.4, 0.55);
+            box.castShadow = true;
+            chest.add(box, lid, latch);
+            addOutline(box, 0.07); addOutline(lid, 0.07);
+            chest.position.copy(chestPos);
+            chest.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), chestNormal);
+            chest.userData = { type: 'chest' };
+            scene.add(chest); interactables.push(chest);
         }
 
         function spawnShop(planet) {
@@ -1275,7 +1423,7 @@
 
         // Read and validate the save BEFORE building the world. If it's unreadable we must
         // still generate trees/rocks/weeds, otherwise a bad save leaves totally barren planets.
-        const SAVE_VERSION = 7;
+        const SAVE_VERSION = 8;
         const BOOT_FLAG = 'galaxyFarmBooting';
         let pendingSave = null, saveQuarantined = false;
 
@@ -1322,7 +1470,7 @@
         // Late-game worlds exist from the start so save indices stay stable, but stay hidden
         // until their requirements are met. Appended last, never inserted.
         const p6 = createPlanet(40, 110, 40, 12, 0x2b7f9e, "AQUA DRIFT", 10, 0, true);
-        const p7 = createPlanet(-130, 70, -120, 7, 0x9fa8da, "WILD MOON", 7, 0, true);
+        const p7 = createPlanet(-100, 112, -34, 7, 0x9fa8da, "WILD MOON", 7, 0, true);   // off the Ember-Home line
         const p8 = createPlanet(150, -20, -60, 20, 0x7cb342, "VERDANT REACH", 20, 0, true);
         const LATE_WORLDS = [p6, p7, p8];
         LATE_WORLDS.forEach(p => { p.userData.late = true; p.userData.discovered = false; });
@@ -1461,7 +1609,7 @@
         // action ran twice (deposit then "nothing to sell", pick a sheep up then drop it).
         let lastTouchAt = 0;
         renderer.domElement.addEventListener('mousedown', (e) => {
-            if (mapOpen || bagOpen || document.getElementById('store-panel').classList.contains('open')) return;
+            if (mapOpen || bagOpen || storageOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (performance.now() - lastTouchAt < 900) return;      // already handled as a touch
             if (document.pointerLockElement !== renderer.domElement && !/Android|iPhone/i.test(navigator.userAgent)) {
                 renderer.domElement.requestPointerLock();
@@ -1484,10 +1632,10 @@
         window.addEventListener('touchstart', (e) => {
             lastTouchAt = performance.now();
             // UI overlays swallow input entirely — no joysticks, no world interaction behind them
-            if (mapOpen || bagOpen || radialOpen || document.getElementById('store-panel').classList.contains('open')) return;
+            if (mapOpen || bagOpen || radialOpen || storageOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (e.touches.length === 2) initialPinchDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
             for(let t of e.changedTouches) {
-                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.closest('#side-rail') || t.target.closest('#radial') || t.target.closest('#radial-backdrop') || t.target.closest('#mp-panel') || t.target.closest('#bag-panel') || t.target.closest('#bag-backdrop') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
+                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.closest('#side-rail') || t.target.closest('#radial') || t.target.closest('#radial-backdrop') || t.target.closest('#mp-panel') || t.target.closest('#bag-panel') || t.target.closest('#bag-backdrop') || t.target.closest('#storage-panel') || t.target.closest('#store-backdrop') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
                     if(t.target.id === 'jump-btn') handleJump(); continue;
                 }
                 const x = t.clientX, y = t.clientY;
@@ -1654,6 +1802,7 @@
         function updateCropVisual(c) {
             const def = CROP_DEFS[c.userData.cropId];
             if (!def) { c.material.color.set(0x9e9e8a); return; }
+            if (c.userData.dead) { c.material.color.set(0x6b5b4a); return; }   // withered, brown
             if (c.userData.wilted) { c.material.color.set(0x9e9e8a); return; }
             const target = new THREE.Color(def.color);
             if (c.userData.stage === 0) c.material.color.copy(SPROUT_COLOR);
@@ -1675,6 +1824,7 @@
         }
 
         function waterCrop(c, charge = true) {
+            if (c.userData.dead) { flashStatus('This plant has withered — pull it up.'); return; }
             if (c.userData.wateredToday) { flashStatus('Already watered!'); return; }
             // a guest already paid their own stamina; don't bill the host as well
             if (charge && gameState.stamina.current < 2) { flashStatus('Too tired to water!'); return; }
@@ -1685,6 +1835,21 @@
             setMoundWet(c.userData.moundRef, true);
             playSFX('pop');
             updateInventory();
+            broadcastWorldSync();
+        }
+
+        // Pull a withered plant so the plot can be replanted.
+        function clearDeadCrop(c) {
+            if (c.userData.moundRef) {
+                c.userData.moundRef.userData.hasCrop = false;
+                c.userData.moundRef.userData.cropRef = null;
+                setMoundWet(c.userData.moundRef, false);
+            }
+            const ci = crops.indexOf(c); if (ci >= 0) crops.splice(ci, 1);
+            const ii = interactables.indexOf(c); if (ii >= 0) interactables.splice(ii, 1);
+            activeAnims.push({ obj: c, time: 0, type: 'destroy' });
+            playSFX('pop');
+            flashStatus('Pulled the withered plant.');
             broadcastWorldSync();
         }
 
@@ -1754,6 +1919,7 @@
 
             crops.forEach(c => {
                 const def = CROP_DEFS[c.userData.cropId];
+                if (c.userData.dead) { c.userData.wateredToday = false; setMoundWet(c.userData.moundRef, false); return; }
                 if (c.userData.stage < 2) {
                     if (c.userData.wateredToday) { c.userData.daysGrown++; c.userData.wilted = false; }
                     else if (c.userData.daysGrown > 0) { c.userData.wilted = true; }
@@ -1781,8 +1947,19 @@
             if (seasonIndex(gameState.day) !== seasonBefore) {
                 const se = currentSeason();
                 flashStatus(`${se.icon} ${se.name} has arrived!`);
+                // Anything not suited to the new season withers and must be cleared.
+                let withered = 0;
+                crops.forEach(c => {
+                    if (c.userData.dead) return;
+                    if (inSeason(c.userData.cropId)) return;
+                    c.userData.dead = true;
+                    updateCropVisual(c);
+                    withered++;
+                });
+                if (withered) flashStatus(`${withered} crop${withered > 1 ? 's' : ''} withered with the season.`);
             }
             rebuildCropBar();
+            applySeasonMusic();
             worldTime = 0;
             nightWarned = false;
             playNewDayChime();
@@ -1805,7 +1982,7 @@
                 day: gameState.day, money: gameState.money, stamina: gameState.stamina.current,
                 staminaMax: gameState.stamina.max, totalHarvests: gameState.totalHarvests,
                 inventory: gameState.inventory, pendingSale: gameState.pendingSale, selectedCrop: gameState.selectedCrop,
-                tools: gameState.tools,
+                tools: gameState.tools, storage: gameState.storage, staminaUpgrades: gameState.staminaUpgrades || 0,
                 playerPos: v3(player.position),
                 planets: planets.map(p => ({ stage: p.userData.stage, pending: p.userData.pending, maturedHere: p.userData.maturedHere || 0, discovered: !!p.userData.discovered, seeded: !!p.userData.seeded })),
                 props: [], weeds: [], mounds: [], fences: [], crops: [], berries: [], creatures: []
@@ -1831,7 +2008,7 @@
                 data.crops.push({
                     moundIndex: moundIndexMap.get(c.userData.moundRef),
                     cropId: c.userData.cropId, stage: c.userData.stage, daysGrown: c.userData.daysGrown,
-                    wateredToday: c.userData.wateredToday, wilted: c.userData.wilted
+                    wateredToday: c.userData.wateredToday, wilted: c.userData.wilted, dead: !!c.userData.dead
                 });
             });
             return data;
@@ -1962,6 +2139,7 @@
                 crop.position.copy(mound.position); crop.quaternion.copy(mound.quaternion); crop.translateY(0.35);
                 crop.userData.stage = cd.stage; crop.userData.daysGrown = cd.daysGrown;
                 crop.userData.wateredToday = cd.wateredToday; crop.userData.wilted = cd.wilted;
+                crop.userData.dead = !!cd.dead;
                 crop.userData.moundRef = mound;
                 mound.userData.cropRef = crop;
                 updateCropVisual(crop);
@@ -1982,6 +2160,8 @@
             if (typeof gameState.inventory.berries !== 'number') gameState.inventory.berries = 0;
             gameState.pendingSale = data.pendingSale || {};
             if (data.tools) gameState.tools = Object.assign({ shears: false }, data.tools);
+            gameState.storage = data.storage || {};
+            gameState.staminaUpgrades = data.staminaUpgrades || 0;
             if (data.selectedCrop && CROP_DEFS[data.selectedCrop]) selectCrop(data.selectedCrop);
             rebuildWorldObjects(data);
             if (data.playerPos) player.position.set(data.playerPos.x, data.playerPos.y, data.playerPos.z);
@@ -2248,6 +2428,11 @@
                 if (f) removeFence(f);
                 return;
             }
+            if (msg.tool === 'cleardead') {
+                const dc = findNearestOfType(new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), 'crop', 0.8);
+                if (dc && dc.userData.dead) clearDeadCrop(dc);
+                return;
+            }
             if (msg.tool === 'shear') {
                 const sh = findNearestOfType(new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), 'sheep', 1.5);
                 if (sh) shearSheep(sh);
@@ -2324,6 +2509,7 @@
                 return true;
             }
             if (type === 'berry') { eatBerry(obj); return true; }
+            if (type === 'chest') { openStorage(); return true; }
             if (type === 'shop') { openStore(); return true; }
             if (type === 'bed') { flashStatus('Only the farm owner can sleep here.'); return true; }
             if (type === 'bin') { sendMPAction({ tool: 'deposit' }); return true; }
@@ -2333,6 +2519,7 @@
                 gameState.stamina.current -= 2; updateInventory();
                 sendMPAction({ tool: 'water', pos: v3(obj.position) }); return true;
             }
+            if (type === 'crop' && obj.userData.dead) { sendMPAction({ tool: 'cleardead', pos: v3(obj.position) }); return true; }
             if (window.activeTool === 'water' && type === 'mound' && obj.userData.hasCrop) {
                 const mature = obj.userData.cropRef.userData.stage === 2;
                 if (!mature) {
@@ -2367,6 +2554,77 @@
             if (hostConn && hostConn.open) hostConn.send({ type: 'action', ...action });
         }
 
+        // --- STORAGE CHEST ---
+        let storageOpen = false;
+        function storageNote(m) { const el = document.getElementById('storage-note'); if (el) el.innerText = m; }
+
+        window.openStorage = () => {
+            if (document.pointerLockElement) document.exitPointerLock();
+            storageOpen = true;
+            document.getElementById('storage-panel').classList.add('open');
+            document.getElementById('store-backdrop').classList.add('open');
+            storageNote(''); renderStorage();
+        };
+        window.closeStorage = () => {
+            storageOpen = false;
+            document.getElementById('storage-panel').classList.remove('open');
+            document.getElementById('store-backdrop').classList.remove('open');
+        };
+
+        function moveItem(from, to, id, qty) {
+            const have = from[id] || 0;
+            const n = Math.min(qty, have);
+            if (n <= 0) return 0;
+            from[id] = have - n;
+            to[id] = (to[id] || 0) + n;
+            if (from[id] <= 0) delete from[id];
+            return n;
+        }
+
+        window.storeItem = (id, all) => {
+            if (isGuest()) { storageNote('Only the farm owner can use the chest.'); return; }
+            const bag = gameState.inventory.produce;
+            const n = moveItem(bag, gameState.storage, id, all ? (bag[id] || 0) : 1);
+            if (!n) { storageNote('Nothing to store.'); return; }
+            playSFX('thud'); storageNote(`Stored ${n} ${goodName(id)}.`);
+            updateInventory(); renderStorage(); saveGame();
+        };
+        window.takeItem = (id, all) => {
+            if (isGuest()) { storageNote('Only the farm owner can use the chest.'); return; }
+            const st = gameState.storage;
+            const n = moveItem(st, gameState.inventory.produce, id, all ? (st[id] || 0) : 1);
+            if (!n) { storageNote('Nothing to take.'); return; }
+            playSFX('pop'); storageNote(`Took ${n} ${goodName(id)}.`);
+            updateInventory(); renderStorage(); saveGame();
+        };
+
+        function renderStorage() {
+            const el = document.getElementById('storage-list');
+            if (!el) return;
+            const bag = gameState.inventory.produce || {};
+            const st = gameState.storage || {};
+            const rows = [];
+
+            const bagKeys = Object.keys(bag).filter(k => bag[k] > 0);
+            rows.push('<div class="bag-head">In your bag</div>');
+            if (!bagKeys.length) rows.push('<div class="bag-empty">Nothing to store.</div>');
+            bagKeys.forEach(id => rows.push(
+                `<div class="bag-row"><span>${ITEM_ICONS[id]} ${goodName(id)} <b>x${bag[id]}</b></span>`
+              + `<span><button class="sto-btn sto-in" onclick="storeItem('${id}',false)">Store 1</button> `
+              + `<button class="sto-btn sto-in" onclick="storeItem('${id}',true)">All</button></span></div>`));
+
+            const stKeys = Object.keys(st).filter(k => st[k] > 0);
+            rows.push('<div class="bag-head">In the chest</div>');
+            if (!stKeys.length) rows.push('<div class="bag-empty">The chest is empty.</div>');
+            stKeys.forEach(id => rows.push(
+                `<div class="bag-row"><span>${ITEM_ICONS[id]} ${goodName(id)} <b>x${st[id]}</b> <span class="bag-worth">${sellPriceOf(id)}c ea</span></span>`
+              + `<span><button class="sto-btn sto-out" onclick="takeItem('${id}',false)">Take 1</button> `
+              + `<button class="sto-btn sto-out" onclick="takeItem('${id}',true)">All</button></span></div>`));
+
+            rows.push('<div class="bag-head">The shipping bin sells everything in your bag. Anything in the chest is safe.</div>');
+            el.innerHTML = rows.join('');
+        }
+
         // --- STORE ---
         const STORE_PRICES = { wood: 20, stone: 15, crystal: 250 };
         const STORE_SELL_RATE = 0.9; // instant cash, slightly under shipping-bin value
@@ -2384,6 +2642,10 @@
                     lines.push(`${goodName(id)} x${qty} — ${val}c`);
                 }
             }
+            const tonicBtn = document.getElementById('buy-tonic');
+            const tonicInfo = document.getElementById('tonic-info');
+            if (tonicBtn) tonicBtn.innerText = `Buy ${tonicPrice()}c`;
+            if (tonicInfo) tonicInfo.innerHTML = `<span class="bag-worth">+${TONIC_BONUS} max energy (owned ${gameState.staminaUpgrades || 0})</span>`;
             const shearBtn = document.getElementById('buy-shears');
             if (shearBtn) {
                 const owned = toolOwned('shears');
@@ -2414,6 +2676,20 @@
             playSFX('pop'); updateInventory(); refreshStorePanel();
             storeStatus(`Sold for ${earned}c!`);
             broadcastWorldSync();
+        };
+
+        window.buyTonic = () => {
+            if (isGuest()) { storeStatus('Only the farm owner can buy upgrades.'); return; }
+            const price = tonicPrice();
+            if (gameState.money < price) { storeStatus(`Need ${price}c.`); return; }
+            gameState.money -= price;
+            gameState.staminaUpgrades = (gameState.staminaUpgrades || 0) + 1;
+            recomputeLevel(false);
+        applySeasonMusic();
+            gameState.stamina.current = Math.min(gameState.stamina.max, gameState.stamina.current + TONIC_BONUS);
+            playSFX('pop'); updateInventory(); refreshStorePanel();
+            storeStatus(`Max energy is now ${gameState.stamina.max}!`);
+            saveGame(); broadcastWorldSync();
         };
 
         window.storeBuyTool = (t) => {
@@ -2586,7 +2862,36 @@
             const hits = ray.intersectObjects(mapPickables, false);
             mapSelected = hits.length ? hits[0].object.userData.planetRef : null;
             mapNote('');
+            renderMapStats();
             renderMapDetail();
+        }
+
+        function renderMapStats() {
+            const el = document.getElementById('map-stats');
+            if (!el) return;
+            const se = currentSeason();
+            const bloomed = planets.filter(p => isTerraformable(p) && p.userData.stage >= MAX_STAGE).length;
+            const known = planets.filter(p => isTerraformable(p) && !isHidden(p)).length;
+            const plots = interactables.filter(o => o.userData.type === 'mound').length;
+            const growing = crops.filter(c => !c.userData.dead).length;
+            const withered = crops.filter(c => c.userData.dead).length;
+            const flock = creatures.length;
+            const pennedN = creatures.filter(c => c.userData.penned).length;
+            const stored = Object.values(gameState.storage || {}).reduce((a, b) => a + b, 0);
+            el.innerHTML =
+                `<div class="sd">★ Star Date ${currentYear()}.${String(seasonIndex(gameState.day) + 1)}.${String(dayOfSeason()).padStart(2,'0')}</div>`
+              + `<div>${se.icon} ${se.name} · Day ${dayOfSeason()}/${SEASON_LEN} · Year ${currentYear()} · Day ${gameState.day} overall</div>`
+              + `<div class="grid">`
+              +   `<span>⭐ Level ${gameState.level || 1}</span>`
+              +   `<span>⚡ ${Math.round(gameState.stamina.current)}/${gameState.stamina.max}</span>`
+              +   `<span>💰 ${gameState.money}c</span>`
+              +   `<span>🌾 ${gameState.totalHarvests} harvested</span>`
+              +   `<span>🌍 ${bloomed}/${known} bloomed</span>`
+              +   `<span>🟫 ${plots} plots</span>`
+              +   `<span>🌱 ${growing} growing${withered ? ` · 🥀 ${withered}` : ''}</span>`
+              +   `<span>🐑 ${flock} sheep (${pennedN} penned)</span>`
+              +   `<span>📦 ${stored} stored</span>`
+              + `</div>`;
         }
 
         function renderMapDetail() {
@@ -2717,7 +3022,7 @@
                 if (!mapRenderer) initMap();
                 refreshClearedStages();
                 buildMap();
-                mapSelected = null; mapNote(''); renderMapDetail();
+                mapSelected = null; mapNote(''); renderMapStats(); renderMapDetail();
                 mapAutoSpin = true;
                 requestAnimationFrame(renderMap);
             }
@@ -2978,10 +3283,14 @@
                     } else {
                         sleep();
                     }
+                } else if (type === 'chest') {
+                    openStorage();
                 } else if (type === 'shop') {
                     openStore();
                 } else if (type === 'bin') {
                     depositProduce();
+                } else if (type === 'crop' && obj.userData.dead) {
+                    clearDeadCrop(obj);
                 } else if (type === 'crop' && obj.userData.stage === 2) {
                     harvestCrop(obj);
                 } else if (type === 'crop' && window.activeTool === 'water') {
@@ -3023,7 +3332,7 @@
                     broadcastWorldSync();
                 } else if (window.activeTool === 'hammer') {
                     // permanent fixtures must never be destroyable
-                    if (type === 'bed' || type === 'bin' || type === 'shop' || type === 'sheep') { flashStatus("You can't break that!"); return; }
+                    if (type === 'bed' || type === 'bin' || type === 'shop' || type === 'chest' || type === 'sheep') { flashStatus("You can't break that!"); return; }
                     if (type === 'fence') gameState.inventory.wood++;
 
                     if (type === 'mound' && obj.userData.cropRef) {
@@ -3081,6 +3390,37 @@
             }
         }
 
+        // The old loop assigned a target for EVERY planet inside the aiming cone, so the last
+        // one in the array won rather than the one being aimed at — which made Home Green
+        // (index 0) almost impossible to select once the galaxy filled up.
+        // Best alignment wins outright. JUMP_TIE only covers genuinely ambiguous aims — two
+        // planets within ~3 degrees of each other — where reaching the nearer one is intuitive
+        // because you'd pass it first. A wider window let a close planet hijack aims meant for
+        // a distant one, which is what made Home Green swallow every other target.
+        const JUMP_CONE = 0.85, JUMP_TIE = 0.0015;
+        function pickJumpTarget(fwd) {
+            const inCone = [];
+            planets.forEach(p => {
+                if (p === currentPlanet || isHidden(p)) return;
+                const dot = fwd.dot(p.position.clone().sub(player.position).normalize());
+                if (dot > JUMP_CONE) inCone.push({ p, dot, d: player.position.distanceTo(p.position) });
+            });
+            if (!inCone.length) return null;
+            let best = inCone[0];
+            inCone.forEach(c => { if (c.dot > best.dot) best = c; });
+            // among near-equally aimed candidates, take the closest
+            let pick = best;
+            inCone.forEach(c => { if (best.dot - c.dot <= JUMP_TIE && c.d < pick.d) pick = c; });
+            return pick.p;
+        }
+
+        function updateJumpLabel() {
+            const el = document.getElementById('jump-target');
+            if (!el) return;
+            if (targetPlanet) { el.innerText = '→ ' + targetPlanet.userData.name; el.classList.add('show'); }
+            else el.classList.remove('show');
+        }
+
         function handleJump() {
             if (!isGrounded) return;
             const up = player.position.clone().sub(currentPlanet.position).normalize();
@@ -3133,6 +3473,40 @@
         updateInventory();
 
         let framesRendered = 0, animErrorLogged = false, nightWarned = false;
+
+        // --- TESTING TOOLS ---
+        // Time controls for checking season transitions without waiting hours.
+        const TIME_SCALES = [1, 8, 30, 120];
+        let timeScaleIdx = 0;
+        function timeScale() { return TIME_SCALES[timeScaleIdx]; }
+
+        window.cycleTimeScale = () => {
+            timeScaleIdx = (timeScaleIdx + 1) % TIME_SCALES.length;
+            const b = document.getElementById('tt-speed');
+            if (b) b.innerText = `⏩ Speed ${timeScale()}×`;
+            mapNote(`Clock running at ${timeScale()}× — testing only.`);
+        };
+
+        // Rolls the day over without the "collapsed from exhaustion" penalty.
+        function testAdvanceDay() {
+            worldTime = 0;
+            gameState.stamina.current = Math.max(1, gameState.stamina.current);
+            sleep(false);
+        }
+
+        window.skipDay = () => {
+            testAdvanceDay();
+            renderMapStats(); renderMapDetail(); buildMap();
+            mapNote(`Now day ${gameState.day} — ${currentSeason().name}.`);
+        };
+
+        window.skipSeason = () => {
+            const from = seasonIndex(gameState.day);
+            let guard = 0;
+            while (seasonIndex(gameState.day) === from && guard++ < SEASON_LEN + 2) testAdvanceDay();
+            renderMapStats(); renderMapDetail(); buildMap();
+            mapNote(`${currentSeason().icon} ${currentSeason().name} of Year ${currentYear()} (day ${gameState.day}).`);
+        };
         function animate() {
             requestAnimationFrame(animate);
             try { animateFrame(); } catch (err) {
@@ -3147,7 +3521,7 @@
         }
 
         function animateFrame() {
-            worldTime += DAY_CYCLE_SPEED;
+            worldTime += DAY_CYCLE_SPEED * timeScale();
             // A full sun+moon circuit ends the day whether you slept or not.
             if (worldTime >= CYCLE_LEN) { sleep(true); }
             const cyclePos = worldTime % CYCLE_LEN;
@@ -3183,11 +3557,17 @@
             moonLight.intensity = (1 - daylight) * 0.42;
 
             ambLight.intensity = 0.13 + daylight * 0.50;
-            ambLight.color.setRGB(0.18 + daylight*0.07, 0.20 + daylight*0.05, 0.42 - daylight*0.04);
+            const tint = SEASON_TINT[currentSeason().key] || SEASON_TINT.spring;
+            ambLight.color.setRGB(
+                (0.18 + daylight*0.07) * tint[0],
+                (0.20 + daylight*0.05) * tint[1],
+                (0.42 - daylight*0.04) * tint[2]);
 
             // The skybox is an unlit material, so it must be dimmed manually or midnight
             // looks exactly as bright as noon.
-            nebMat.color.setScalar(0.22 + daylight * 0.78);
+            const neb = 0.22 + daylight * 0.78;
+            nebMat.color.setRGB(neb * tint[0], neb * tint[1], neb * tint[2]);
+            updateTwinkle(worldTime * 90);
             const starVis = Math.max(0.25, 1 - daylight * 0.85);
             starLayers.forEach(l => { l.material.opacity = starVis * l.userData.baseOpacity; });
 
@@ -3226,6 +3606,7 @@
                 s.userData.jumpTime += 0.05;
                 const hop = Math.sin(s.userData.jumpTime * 3); const hopHeight = Math.max(0, hop) * 0.6;
                 wanderSheep(s, hop);
+                spaceOutSheep(s);
                 s.position.lerp(s.userData.offset.clone().multiplyScalar(s.userData.planet.userData.radius + 0.6 + hopHeight).add(s.userData.planet.position), 0.2);
                 s.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), s.userData.offset);
                 const stretch = 1 + Math.max(0, hop) * 0.3; const squish = 1 - Math.max(0, hop) * 0.15;
@@ -3284,17 +3665,14 @@
             const camPos = player.position.clone().add(up.clone().multiplyScalar(6 + (camPitch * 8))).add(new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion).multiplyScalar(camZoom));
             camera.position.lerp(camPos, 0.2); camera.lookAt(player.position.clone().add(up.clone().multiplyScalar(2))); camera.up.copy(up);
             
-            targetPlanet = null; jumpLine.visible = false;
-            const fwd = new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);
-            planets.forEach(p => {
-                if(p === currentPlanet || isHidden(p)) return;
-                if(fwd.dot(p.position.clone().sub(player.position).normalize()) > 0.85) { 
-                    targetPlanet = p; jumpLine.visible = true; 
-                    const mid = player.position.clone().add(p.position).multiplyScalar(0.5).add(up.clone().multiplyScalar(10));
-                    const curve = new THREE.QuadraticBezierCurve3(player.position, mid, p.position);
-                    jumpLine.geometry.setFromPoints(curve.getPoints(20));
-                }
-            });
+            targetPlanet = pickJumpTarget(new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion));
+            jumpLine.visible = !!targetPlanet;
+            if (targetPlanet) {
+                const mid = player.position.clone().add(targetPlanet.position).multiplyScalar(0.5).add(up.clone().multiplyScalar(10));
+                const curve = new THREE.QuadraticBezierCurve3(player.position, mid, targetPlanet.position);
+                jumpLine.geometry.setFromPoints(curve.getPoints(20));
+            }
+            updateJumpLabel();
             renderer.render(scene, camera);
             if (++framesRendered === 3) {
                 // survived startup — the save is safe to load again next launch
