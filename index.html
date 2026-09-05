@@ -34,7 +34,7 @@
         #terraform-line { margin-top: 2px; }
         #spin-toggle { display: none; }
         #spin-toggle.show { display: flex; }
-        #mp-toggle, #map-toggle, #bag-toggle, #spin-toggle { width: clamp(38px, 11vw, 44px); height: clamp(38px, 11vw, 44px); background: rgba(255,255,255,0.94); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(16px, 4.6vw, 19px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); border: 2px solid #ddd; cursor: pointer; }
+        #mp-toggle, #map-toggle, #bag-toggle, #spin-toggle, #help-toggle { width: clamp(38px, 11vw, 44px); height: clamp(38px, 11vw, 44px); background: rgba(255,255,255,0.94); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(16px, 4.6vw, 19px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); border: 2px solid #ddd; cursor: pointer; }
         #mp-panel { position: absolute; top: 140px; left: 14px; width: 220px; background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.25); border-radius: 14px; padding: 14px; color: white; z-index: 109; display: none; flex-direction: column; gap: 8px; text-align: center; font-size: 13px; }
         #mp-panel.open { display: flex; }
         .mp-btn { padding: 8px; border-radius: 10px; border: none; background: #ff4081; color: white; font-weight: bold; cursor: pointer; font-size: 13px; }
@@ -42,6 +42,27 @@
         #mp-share-row { display: none; gap: 6px; }
         #mp-link { color: #90caf9; font-size: 11px; text-decoration: none; opacity: 0.9; }
         .mp-or { opacity: 0.6; font-size: 11px; }
+
+        /* HOW TO PLAY */
+        #tut-backdrop { position: fixed; inset: 0; background: rgba(2,0,8,0.82); z-index: 900; display: none; }
+        #tut-backdrop.open { display: block; }
+        #tut-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            width: min(340px, 92vw); max-height: 88vh; overflow-y: auto;
+            background: rgba(16,8,28,0.98); border: 1px solid rgba(255,255,255,0.32);
+            border-radius: 20px; padding: 16px; color: #fff; z-index: 910; display: none;
+            flex-direction: column; gap: 8px; box-shadow: 0 20px 70px rgba(0,0,0,0.8); }
+        #tut-panel.open { display: flex; }
+        #tut-art { width: 100%; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 6px 0; }
+        #tut-art svg { display: block; width: 100%; height: auto; }
+        #tut-title { font-size: 16px; font-weight: 900; letter-spacing: 0.5px; }
+        #tut-body { font-size: 13px; line-height: 1.55; opacity: 0.94; }
+        #tut-body b { color: #ffd166; }
+        #tut-dots { display: flex; gap: 5px; justify-content: center; padding: 2px 0; }
+        .tut-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.28); }
+        .tut-dot.on { background: #ffd166; }
+        #tut-nav { display: flex; gap: 8px; }
+        #tut-nav .mp-btn { flex: 1; }
+        .tut-skip { background: none; border: none; color: rgba(255,255,255,0.5); font-size: 11px; text-decoration: underline; cursor: pointer; padding: 2px; }
 
         /* RADIAL QUICK MENU — opened by holding a finger on the world */
         #radial-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 600; display: none; }
@@ -190,6 +211,7 @@
             <div id="mp-toggle" onclick="toggleMP()">👥</div>
             <div id="map-toggle" onclick="toggleMap()">🗺️</div>
             <div id="bag-toggle" onclick="toggleBag()">🧺</div>
+            <div id="help-toggle" onclick="openTutorial()">❓</div>
             <div id="spin-toggle" onclick="toggleSpin()">↺</div>
         </div>
     </div>
@@ -232,6 +254,18 @@
         <button class="mp-btn mp-close" onclick="closeStore()">Close</button>
     </div>
 
+    <div id="tut-backdrop"></div>
+    <div id="tut-panel">
+        <div id="tut-art"></div>
+        <div id="tut-title"></div>
+        <div id="tut-body"></div>
+        <div id="tut-dots"></div>
+        <div id="tut-nav">
+            <button class="mp-btn mp-close" onclick="tutPrev()">‹ Back</button>
+            <button class="mp-btn" id="tut-next" onclick="tutNext()">Next ›</button>
+        </div>
+        <button class="tut-skip" onclick="closeTutorial()">Skip / close</button>
+    </div>
     <div id="radial-backdrop" onclick="closeRadial()"></div>
     <div id="radial"></div>
     <div id="store-backdrop" onclick="closeStorage()"></div>
@@ -982,9 +1016,16 @@
             const moving = u.wanderClock < (u.moveUntil || 0);
             if (moving && hop > 0 && u.heading) {
                 u.offset.addScaledVector(u.heading, SHEEP_STEP).normalize();
-                if (u.penned && u.penCentre) {
-                    // Hard boundary, not a nudge. The old soft lerp let sheep leak out, and
-                    // bouncing to a fresh RANDOM heading often pointed straight back outward.
+                clampToPen(s);
+            }
+            u.moving = moving;
+        }
+
+        // Hard boundary, not a nudge. Called after ANY force that can move a sheep — wandering
+        // or crowd separation — because separation alone was able to shove one past the fence.
+        function clampToPen(s) {
+            const u = s.userData;
+            if (u.penned && u.penCentre) {
                     const home = u.penCentre.clone().sub(u.planet.position).normalize();
                     const limit = u.penTether || PEN_TETHER;
                     const d = u.offset.distanceTo(home);
@@ -1003,26 +1044,35 @@
                         }
                         u.moveUntil = u.wanderClock + 50 + Math.random() * 40;
                     }
-                }
             }
-            u.moving = moving;
         }
 
         // Sheep keep a little distance from one another. Throttled to every 5th frame per
         // sheep, so the pairwise check stays cheap even with a large flock.
-        const SHEEP_SPACING = 0.055, SHEEP_PUSH = 0.35;
+        const SHEEP_SPACING = 0.055, SHEEP_PUSH = 0.55;
         function spaceOutSheep(s) {
-            if ((s.userData.wanderClock || 0) % 5 !== 0) return;
+            if ((s.userData.wanderClock || 0) % 2 !== 0) return;
             const planet = s.userData.planet;
             creatures.forEach(o => {
                 if (o === s || o.userData.planet !== planet) return;
-                const diff = s.userData.offset.clone().sub(o.userData.offset);
+                let diff = s.userData.offset.clone().sub(o.userData.offset);
                 const d = diff.length();
-                if (d > 1e-5 && d < SHEEP_SPACING) {
-                    const push = (SHEEP_SPACING - d) * SHEEP_PUSH;
-                    s.userData.offset.addScaledVector(diff.normalize(), push).normalize();
+                if (d >= SHEEP_SPACING) return;
+                if (d <= 1e-5) {
+                    // Exactly coincident: nudge in a random direction, or they'd stay welded
+                    // together forever since there's no separation vector to follow.
+                    diff = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5);
+                    if (diff.lengthSq() < 1e-6) diff.set(1, 0, 0);
                 }
+                // Push BOTH apart by half each. Moving only one meant the pair converged
+                // slowly and could sit visibly overlapping for a while.
+                const push = (SHEEP_SPACING - d) * SHEEP_PUSH * 0.5;
+                const dir = diff.normalize();
+                s.userData.offset.addScaledVector(dir, push).normalize();
+                o.userData.offset.addScaledVector(dir, -push).normalize();
+                clampToPen(o);
             });
+            clampToPen(s);   // separation must never push a sheep out of its pen
         }
 
         function updateSheepLook(s) {
@@ -1079,8 +1129,9 @@
                 const R = s.userData.planet.userData.radius || 15;
                 s.userData.penTether = Math.max(0.03, Math.min(0.30, (mean * 0.45) / R));
             } else {
+                // Leaving a pen pauses wool GROWTH but must not destroy wool already grown,
+                // nor the progress toward it. Only shearing removes wool.
                 s.userData.penCentre = null;
-                s.userData.woolDays = 0; s.userData.hasWool = false;
             }
             updateSheepLook(s);
             return s.userData.penned && !wasPenned;
@@ -1096,6 +1147,10 @@
         function pickUpSheep(s) {
             if (carriedSheep) { flashStatus('Already carrying a sheep.'); return; }
             carriedSheep = s;
+            // Release it from its old pen, or the "judge the pen by its centre" rule would
+            // keep measuring the pen it just left and drag it straight back there.
+            s.userData.penned = false;
+            s.userData.penCentre = null;
             playSFX('baaa');
             flashStatus('Carrying sheep — tap the ground to set it down.');
         }
@@ -1105,6 +1160,9 @@
             carriedSheep = null;
             s.userData.planet = planet;
             s.userData.offset = pos.clone().sub(planet.position).normalize();
+            // Snap the world position too. The render loop only eases it there over several
+            // frames, so checking the pen right now would measure the sheep's OLD location.
+            s.position.copy(planet.position).addScaledVector(s.userData.offset, planet.userData.radius + 0.6);
             updatePenned(s);
             playSFX('thud');
             flashStatus(s.userData.penned ? 'Set down inside a pen!' : 'Set down.');
@@ -1114,12 +1172,12 @@
         function shearSheep(s) {
             if (!s.userData.penned) {
                 const near = fencesNear(s.position, s.userData.planet).length;
-                flashStatus(`Not penned — ${near}/${PEN_FENCES} fences, enclosed on ${penSectorsCovered(s)}/${PEN_SECTORS_NEEDED} sides.`);
+                flashStatus(`Not penned — ${near}/${PEN_FENCES} fences within reach, surrounded on ${penSectorsCovered(s)}/${PEN_SECTORS_NEEDED} sides.`);
                 return;
             }
             if (!s.userData.hasWool) {
-                const left = Math.max(0, WOOL_DAYS - s.userData.woolDays);
-                flashStatus(left > 0 ? `Wool ready in ${left} day${left>1?'s':''}.` : 'No wool yet.');
+                const left = Math.max(0, WOOL_DAYS - (s.userData.woolDays || 0));
+                flashStatus(left > 0 ? `Wool ready in ${left} more penned day${left>1?'s':''}.` : 'No wool yet.');
                 return;
             }
             s.userData.hasWool = false; s.userData.woolDays = 0;
@@ -1133,7 +1191,7 @@
         function growWool() {
             creatures.forEach(s => {
                 updatePenned(s);
-                if (!s.userData.penned || s.userData.hasWool) return;
+                if (!s.userData.penned || s.userData.hasWool) return;   // outside a pen: progress holds
                 s.userData.woolDays++;
                 if (s.userData.woolDays >= WOOL_DAYS) { s.userData.hasWool = true; updateSheepLook(s); }
             });
@@ -1609,7 +1667,7 @@
         // action ran twice (deposit then "nothing to sell", pick a sheep up then drop it).
         let lastTouchAt = 0;
         renderer.domElement.addEventListener('mousedown', (e) => {
-            if (mapOpen || bagOpen || storageOpen || document.getElementById('store-panel').classList.contains('open')) return;
+            if (mapOpen || bagOpen || storageOpen || tutorialOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (performance.now() - lastTouchAt < 900) return;      // already handled as a touch
             if (document.pointerLockElement !== renderer.domElement && !/Android|iPhone/i.test(navigator.userAgent)) {
                 renderer.domElement.requestPointerLock();
@@ -1632,10 +1690,10 @@
         window.addEventListener('touchstart', (e) => {
             lastTouchAt = performance.now();
             // UI overlays swallow input entirely — no joysticks, no world interaction behind them
-            if (mapOpen || bagOpen || radialOpen || storageOpen || document.getElementById('store-panel').classList.contains('open')) return;
+            if (mapOpen || bagOpen || radialOpen || storageOpen || tutorialOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (e.touches.length === 2) initialPinchDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
             for(let t of e.changedTouches) {
-                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.closest('#side-rail') || t.target.closest('#radial') || t.target.closest('#radial-backdrop') || t.target.closest('#mp-panel') || t.target.closest('#bag-panel') || t.target.closest('#bag-backdrop') || t.target.closest('#storage-panel') || t.target.closest('#store-backdrop') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
+                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.closest('#side-rail') || t.target.closest('#radial') || t.target.closest('#radial-backdrop') || t.target.closest('#mp-panel') || t.target.closest('#bag-panel') || t.target.closest('#bag-backdrop') || t.target.closest('#storage-panel') || t.target.closest('#tut-panel') || t.target.closest('#store-backdrop') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
                     if(t.target.id === 'jump-btn') handleJump(); continue;
                 }
                 const x = t.clientX, y = t.clientY;
@@ -1687,6 +1745,123 @@
             if (e.touches.length < 2) initialPinchDist = null;
         });
 
+
+        // --- HOW TO PLAY ---
+        // Illustrations are drawn as inline SVG rather than captured screenshots, so they stay
+        // sharp at any size and cost nothing to ship.
+        const A = (inner, h) => `<svg viewBox="0 0 300 ${h}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+        const PLANET = (cy, r, fill) => `<circle cx="150" cy="${cy}" r="${r}" fill="${fill}" stroke="#000" stroke-width="3"/>`;
+        const LABEL = (x, y, t, anchor) => `<text x="${x}" y="${y}" fill="#fff" font-size="11" font-family="sans-serif" text-anchor="${anchor||'middle'}">${t}</text>`;
+        const ARROW = (x1,y1,x2,y2) => `<path d="M${x1} ${y1} L${x2} ${y2}" stroke="#ffd166" stroke-width="2.5" fill="none" marker-end="url(#ah)"/>`;
+        const DEFS = `<defs><marker id="ah" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="#ffd166"/></marker></defs>`;
+
+        const TUTORIAL = [
+            { title: '👋 Welcome to Galaxy Farm',
+              art: A(DEFS + PLANET(150, 78, '#66cc66')
+                  + `<rect x="140" y="52" width="20" height="30" rx="10" fill="#ffaacc" stroke="#000" stroke-width="2.5"/>`
+                  + `<circle cx="46" cy="152" r="26" fill="none" stroke="#fff" stroke-width="2.5" opacity="0.65"/><circle cx="46" cy="152" r="10" fill="#fff" opacity="0.55"/>`
+                  + `<circle cx="254" cy="152" r="26" fill="none" stroke="#fff" stroke-width="2.5" opacity="0.65"/><circle cx="254" cy="152" r="10" fill="#fff" opacity="0.55"/>`
+                  + LABEL(46, 192, 'move') + LABEL(254, 192, 'look')
+                  + LABEL(150, 20, 'You farm on small round worlds'), 200),
+              body: 'Hold the <b>bottom-left</b> of the screen to walk and the <b>bottom-right</b> to look around. Tap the upper part of the screen to use your tool. Everything is walkable — keep going and you loop right round the planet.' },
+
+            { title: '🧰 Tools and the quick menu',
+              art: A(DEFS
+                  + `<rect x="112" y="18" width="76" height="76" rx="38" fill="rgba(255,255,255,0.10)" stroke="#fff" stroke-width="2" stroke-dasharray="4 4"/>`
+                  + LABEL(150, 62, 'hold') 
+                  + [['✋',150,10],['⛏️',196,30],['🌱',216,74],['💧',196,118],['🔨',150,138],['🚧',104,118],['✂️',84,74],['🧺',104,30]].map(([e,x,y]) =>
+                      `<circle cx="${x}" cy="${y}" r="15" fill="#fff"/><text x="${x}" y="${y+5}" font-size="14" text-anchor="middle">${e}</text>`).join('')
+                  + LABEL(150, 172, 'Hold anywhere to open the tool ring'), 185),
+              body: '<b>Hold your finger</b> on the world to open a ring of tools. Or use the 🎒 button top-right. ✋ hand, ⛏️ hoe, 🌱 seeds, 💧 water, 🔨 hammer, 🚧 fence, ✂️ shears. Shears must be bought at the market.' },
+
+            { title: '⛏️ Plow, then plant',
+              art: A(DEFS + PLANET(150, 70, '#66cc66')
+                  + `<ellipse cx="112" cy="92" rx="17" ry="9" fill="#4e3524" stroke="#000" stroke-width="2"/>`
+                  + `<ellipse cx="150" cy="86" rx="17" ry="9" fill="#2a1810" stroke="#000" stroke-width="2"/>`
+                  + `<ellipse cx="188" cy="92" rx="17" ry="9" fill="#4e3524" stroke="#000" stroke-width="2"/>`
+                  + `<path d="M150 84 l0 -16" stroke="#9ccc65" stroke-width="4"/><circle cx="150" cy="64" r="6" fill="#9ccc65" stroke="#000" stroke-width="2"/>`
+                  + ARROW(60, 40, 100, 82) + LABEL(58, 34, '1. hoe the soil', 'start')
+                  + ARROW(250, 40, 168, 64) + LABEL(252, 34, '2. sow a seed', 'end')
+                  + LABEL(150, 178, 'Dark soil = watered'), 190),
+              body: 'Select ⛏️ and tap bare ground to make a plot. Switch to 🌱, pick a crop from the strip, then tap the plot. <b>Only crops in season are offered</b> — the list changes as the year turns.' },
+
+            { title: '💧 Water daily, then harvest',
+              art: A(DEFS
+                  + `<ellipse cx="60" cy="120" rx="20" ry="10" fill="#4e3524" stroke="#000" stroke-width="2"/><path d="M60 116 l0 -14" stroke="#9ccc65" stroke-width="4"/>`
+                  + `<ellipse cx="150" cy="120" rx="20" ry="10" fill="#2a1810" stroke="#000" stroke-width="2"/><path d="M150 116 l0 -26" stroke="#7cb342" stroke-width="5"/><circle cx="150" cy="86" r="9" fill="#7cb342" stroke="#000" stroke-width="2"/>`
+                  + `<ellipse cx="240" cy="120" rx="20" ry="10" fill="#2a1810" stroke="#000" stroke-width="2"/><path d="M240 116 l0 -32" stroke="#2e7d32" stroke-width="5"/><circle cx="240" cy="76" r="13" fill="#ff6347" stroke="#000" stroke-width="2.5"/>`
+                  + LABEL(60, 148, 'sprout') + LABEL(150, 148, 'growing') + LABEL(240, 148, 'ripe!')
+                  + LABEL(150, 22, 'Water every day or growth pauses')
+                  + ARROW(240, 40, 240, 58), 165),
+              body: 'Tap a plot with 💧 to water it — the soil darkens so you can see what is done. Skip a day and the plant droops and stops growing, but it never dies. When it is ripe, <b>tap it to harvest</b>.' },
+
+            { title: '🚧 Fence a pen for your sheep',
+              art: A(DEFS
+                  + [0,1,2,3,4,5,6,7].map(i => { const a = i/8*Math.PI*2, x = 150+Math.cos(a)*62, y = 96+Math.sin(a)*46;
+                      return `<rect x="${x-9}" y="${y-7}" width="18" height="14" rx="2" fill="#795548" stroke="#000" stroke-width="2"/>`; }).join('')
+                  + `<circle cx="150" cy="96" r="17" fill="#fff" stroke="#000" stroke-width="2.5"/><circle cx="144" cy="92" r="2.6" fill="#000"/><circle cx="156" cy="92" r="2.6" fill="#000"/>`
+                  + LABEL(150, 22, 'Surround a sheep on 5 of 8 sides')
+                  + LABEL(150, 178, '5+ fences nearby = penned'), 190),
+              body: 'Place 🚧 fences in a ring around a sheep. A new fence <b>snaps onto the last one</b>, and tapping a fence with ✋ swings it round the joint so you can turn corners. Tap a fence with 🚧 to take the wood back.' },
+
+            { title: '✂️ Wool, and moving sheep',
+              art: A(DEFS
+                  + `<circle cx="86" cy="86" r="26" fill="#d9d2c5" stroke="#000" stroke-width="2.5"/><circle cx="79" cy="80" r="3" fill="#000"/><circle cx="93" cy="80" r="3" fill="#000"/>`
+                  + `<circle cx="214" cy="82" r="32" fill="#fff" stroke="#000" stroke-width="2.5"/><circle cx="206" cy="76" r="3.4" fill="#000"/><circle cx="222" cy="76" r="3.4" fill="#000"/>`
+                  + ARROW(126, 86, 172, 84) + LABEL(150, 66, '3 penned days')
+                  + LABEL(86, 132, 'lean') + LABEL(214, 132, 'woolly — shear it!')
+                  + LABEL(150, 168, '✋ lifts a sheep · tap ground to set it down'), 182),
+              body: 'A penned sheep grows wool over <b>3 days</b>, then looks plump and white. Tap it with ✂️ for wool worth 90c. Use ✋ to pick a sheep up and carry it between planets — it keeps any wool it already grew.' },
+
+            { title: '🌍 Terraform new worlds',
+              art: A(DEFS
+                  + [['#8d6e63','Barren'],['#a98467','Cleared'],['#8fae6a','Soil'],['#79b36a','Water'],['#66cc66','Bloom']].map(([c,n],i) =>
+                      `<circle cx="${34+i*58}" cy="72" r="21" fill="${c}" stroke="#000" stroke-width="2.5"/>`
+                      + `<text x="${34+i*58}" y="112" fill="#fff" font-size="9" font-family="sans-serif" text-anchor="middle">${n}</text>`).join('')
+                  + [0,1,2,3].map(i => ARROW(58+i*58, 72, 68+i*58, 72)).join('')
+                  + LABEL(150, 22, 'Five stages per planet')
+                  + LABEL(150, 142, 'More stages = more plots + higher farm level'), 155),
+              body: 'Open the 🗺️ map and tap a planet. Clear every tree and rock first, then deliver materials and wait out the processors. Each stage unlocks more plots and <b>raises your farm level and max energy</b>. Bigger planets hold more.' },
+
+            { title: '📦 Sell, store, and sleep',
+              art: A(DEFS + PLANET(140, 62, '#66cc66')
+                  + `<rect x="60" y="96" width="34" height="28" rx="3" fill="#6d4c41" stroke="#000" stroke-width="2.5"/>` + LABEL(77, 140, 'bin: sells')
+                  + `<rect x="132" y="98" width="36" height="24" rx="3" fill="#8d6e63" stroke="#000" stroke-width="2.5"/><rect x="130" y="92" width="40" height="9" rx="3" fill="#a1887f" stroke="#000" stroke-width="2"/>` + LABEL(150, 140, 'chest: keeps')
+                  + `<rect x="206" y="100" width="40" height="18" rx="3" fill="#8d6e63" stroke="#000" stroke-width="2.5"/><rect x="206" y="92" width="16" height="10" rx="2" fill="#fff" stroke="#000" stroke-width="2"/>` + LABEL(226, 140, 'bed: sleep')
+                  + LABEL(150, 22, 'Three things beside your farm'), 155),
+              body: 'The <b>shipping bin</b> sells everything in your bag overnight. The <b>storage chest</b> keeps what you want to save. Sleep in the <b>bed</b> to end the day — sleep early to wake fully rested, and if you stay up until sunrise you collapse and lose half your energy.' }
+        ];
+
+        let tutPage = 0;
+        function renderTutorial() {
+            const t = TUTORIAL[tutPage];
+            document.getElementById('tut-art').innerHTML = t.art;
+            document.getElementById('tut-title').innerText = t.title;
+            document.getElementById('tut-body').innerHTML = t.body;
+            document.getElementById('tut-dots').innerHTML =
+                TUTORIAL.map((_, i) => `<div class="tut-dot${i === tutPage ? ' on' : ''}"></div>`).join('');
+            document.getElementById('tut-next').innerText = (tutPage === TUTORIAL.length - 1) ? "Let's farm!" : 'Next ›';
+        }
+
+        window.openTutorial = () => {
+            tutPage = 0; renderTutorial();
+            if (document.pointerLockElement) document.exitPointerLock();
+            document.getElementById('tut-panel').classList.add('open');
+            document.getElementById('tut-backdrop').classList.add('open');
+            tutorialOpen = true;
+        };
+        window.closeTutorial = () => {
+            document.getElementById('tut-panel').classList.remove('open');
+            document.getElementById('tut-backdrop').classList.remove('open');
+            tutorialOpen = false;
+            try { localStorage.setItem('galaxyFarmSeenTutorial', '1'); } catch (e) {}
+        };
+        window.tutNext = () => {
+            if (tutPage >= TUTORIAL.length - 1) { closeTutorial(); return; }
+            tutPage++; renderTutorial();
+        };
+        window.tutPrev = () => { if (tutPage > 0) { tutPage--; renderTutorial(); } };
+
         // --- RADIAL QUICK MENU ---
         const RADIAL_ITEMS = [
             { icon: '✋',  tool: 'hand'   },
@@ -1700,7 +1875,7 @@
             { icon: '🗺️',  act: 'map'     },
             { icon: '👥',  act: 'social'  }
         ];
-        let radialOpen = false;
+        let radialOpen = false, tutorialOpen = false;
 
         window.closeRadial = () => {
             radialOpen = false;
@@ -2365,7 +2540,7 @@
         function clearWorldObjects() {
             for (let i = interactables.length - 1; i >= 0; i--) {
                 const t = interactables[i].userData.type;
-                if (t === 'bed' || t === 'bin') continue;
+                if (t === 'bed' || t === 'bin' || t === 'shop' || t === 'chest') continue;   // permanent fixtures
                 scene.remove(interactables[i]);
                 interactables.splice(i, 1);
             }
@@ -2391,6 +2566,7 @@
         function handleHostMessage(msg) {
             if (msg.type === 'snapshot') applyNetSnapshot(msg.data);
             else if (msg.type === 'move') updateRemotePlayer('host', msg.pos, msg.quat);
+            else if (msg.type === 'sheep') applySheepSync(msg.offs);
         }
 
         function findNearestOfType(pos, type, maxDist) {
@@ -2434,7 +2610,8 @@
                 return;
             }
             if (msg.tool === 'shear') {
-                const sh = findNearestOfType(new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), 'sheep', 1.5);
+                const sh = (typeof msg.sheep === 'number') ? creatures[msg.sheep]
+                         : findNearestOfType(new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), 'sheep', 1.5);
                 if (sh) shearSheep(sh);
                 return;
             }
@@ -2492,6 +2669,28 @@
             guestConns.forEach(conn => { if (conn.open) conn.send({ type: 'snapshot', data }); });
         }
 
+        // Sheep wander with their own randomness, so without this the two sides drift apart and
+        // a guest sees the flock somewhere the host does not.
+        let lastSheepSync = 0;
+        function sendSheepSync() {
+            if (!isHost || guestConns.size === 0) return;
+            const offs = creatures.map(s => {
+                const o = s.userData.offset, pi = planets.indexOf(s.userData.planet);
+                return [Math.round(o.x*1000)/1000, Math.round(o.y*1000)/1000, Math.round(o.z*1000)/1000, pi];
+            });
+            guestConns.forEach(conn => { if (conn.open) conn.send({ type: 'sheep', offs }); });
+        }
+
+        function applySheepSync(offs) {
+            offs.forEach((o, i) => {
+                const s = creatures[i];
+                if (!s) return;
+                s.userData.offset.set(o[0], o[1], o[2]).normalize();
+                const pl = planets[o[3]];
+                if (pl) s.userData.planet = pl;
+            });
+        }
+
         function sendMovement() {
             const p = { x: player.position.x, y: player.position.y, z: player.position.z };
             const q = { x: player.quaternion.x, y: player.quaternion.y, z: player.quaternion.z, w: player.quaternion.w };
@@ -2503,28 +2702,44 @@
         // of applying locally. Everything else (plow, hammer, fence, sleep) stays host-only for now.
         function handleGuestAction(obj, type) {
             if (type === 'sheep') {
-                if (window.activeTool === 'shears') sendMPAction({ tool: 'shear', pos: v3(obj.position) });
-                else if (window.activeTool === 'hand') pickUpSheep(obj);
+                if (window.activeTool === 'shears') {
+                    // Index, not position: sheep move, and the two sides simulate separately.
+                    sendMPAction({ tool: 'shear', sheep: creatures.indexOf(obj) });
+                    flashStatus(obj.userData.hasWool ? 'Shearing...' : 'That sheep has no wool yet.');
+                } else if (window.activeTool === 'hand') pickUpSheep(obj);
                 else flashStatus('Use ✋ to lift, ✂️ to shear.');
                 return true;
             }
-            if (type === 'berry') { eatBerry(obj); return true; }
+            if (type === 'berry') { eatBerry(obj); return true; }   // local pickup, synced next snapshot
             if (type === 'chest') { openStorage(); return true; }
             if (type === 'shop') { openStore(); return true; }
             if (type === 'bed') { flashStatus('Only the farm owner can sleep here.'); return true; }
             if (type === 'bin') { sendMPAction({ tool: 'deposit' }); return true; }
-            if (type === 'crop' && obj.userData.stage === 2) { sendMPAction({ tool: 'harvest', pos: v3(obj.position) }); return true; }
+            if (type === 'crop' && obj.userData.stage === 2) {
+                sendMPAction({ tool: 'harvest', pos: v3(obj.position) });
+                flashStatus('Harvested ' + goodName(obj.userData.cropId) + '!');
+                return true;
+            }
             if (type === 'crop' && window.activeTool === 'water') {
                 if (gameState.stamina.current < 2) { flashStatus('Too tired to water!'); return true; }
                 gameState.stamina.current -= 2; updateInventory();
+                // Show the change straight away; the host's snapshot confirms it a moment later.
+                obj.userData.wateredToday = true; updateCropVisual(obj);
+                setMoundWet(obj.userData.moundRef, true);
+                flashStatus('Watered.');
                 sendMPAction({ tool: 'water', pos: v3(obj.position) }); return true;
             }
             if (type === 'crop' && obj.userData.dead) { sendMPAction({ tool: 'cleardead', pos: v3(obj.position) }); return true; }
             if (window.activeTool === 'water' && type === 'mound' && obj.userData.hasCrop) {
-                const mature = obj.userData.cropRef.userData.stage === 2;
+                const ref = obj.userData.cropRef;
+                const mature = ref.userData.stage === 2;
                 if (!mature) {
                     if (gameState.stamina.current < 2) { flashStatus('Too tired to water!'); return true; }
                     gameState.stamina.current -= 2; updateInventory();
+                    ref.userData.wateredToday = true; updateCropVisual(ref); setMoundWet(obj, true);
+                    flashStatus('Watered.');
+                } else {
+                    flashStatus('Harvested ' + goodName(ref.userData.cropId) + '!');
                 }
                 sendMPAction({ tool: mature ? 'harvest' : 'water', pos: v3(obj.position) }); return true;
             }
@@ -2543,6 +2758,10 @@
                 sendMPAction({ tool: 'hit', pos: v3(obj.position), targetType: type }); return true;
             }
             if (window.activeTool === 'seed' && type === 'mound' && !obj.userData.hasCrop) {
+                const sd = CROP_DEFS[gameState.selectedCrop];
+                if (!sd) { flashStatus('Pick a seed first.'); return true; }
+                if (!inSeason(gameState.selectedCrop)) { flashStatus(`${sd.name} won't grow in ${currentSeason().name}.`); return true; }
+                flashStatus('Planting ' + sd.name + '...');
                 sendMPAction({ tool: 'plant', pos: v3(obj.position), cropId: gameState.selectedCrop }); return true;
             }
             if (window.activeTool === 'seed' && type === 'mound' && obj.userData.hasCrop) { flashStatus('Already planted!'); return true; }
@@ -2686,6 +2905,8 @@
             gameState.staminaUpgrades = (gameState.staminaUpgrades || 0) + 1;
             recomputeLevel(false);
         applySeasonMusic();
+        // First launch: open the guide automatically. Never again after that.
+        try { if (!localStorage.getItem('galaxyFarmSeenTutorial')) setTimeout(() => openTutorial(), 400); } catch (e) {}
             gameState.stamina.current = Math.min(gameState.stamina.max, gameState.stamina.current + TONIC_BONUS);
             playSFX('pop'); updateInventory(); refreshStorePanel();
             storeStatus(`Max energy is now ${gameState.stamina.max}!`);
@@ -3605,8 +3826,7 @@
                 }
                 s.userData.jumpTime += 0.05;
                 const hop = Math.sin(s.userData.jumpTime * 3); const hopHeight = Math.max(0, hop) * 0.6;
-                wanderSheep(s, hop);
-                spaceOutSheep(s);
+                if (!isGuest()) { wanderSheep(s, hop); spaceOutSheep(s); }   // host owns the flock
                 s.position.lerp(s.userData.offset.clone().multiplyScalar(s.userData.planet.userData.radius + 0.6 + hopHeight).add(s.userData.planet.position), 0.2);
                 s.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), s.userData.offset);
                 const stretch = 1 + Math.max(0, hop) * 0.3; const squish = 1 - Math.max(0, hop) * 0.15;
@@ -3636,6 +3856,7 @@
             // --- multiplayer: smooth remote avatars, throttled movement broadcast, guest stamina trickle ---
             remotePlayers.forEach(rp => { rp.mesh.position.lerp(rp.targetPos, 0.25); rp.mesh.quaternion.slerp(rp.targetQuat, 0.25); });
             if ((isHost || isGuest()) && performance.now() - lastMoveSent > 100) { lastMoveSent = performance.now(); sendMovement(); }
+            if (isHost && performance.now() - lastSheepSync > 600) { lastSheepSync = performance.now(); sendSheepSync(); }
             if (isGuest() && gameState.stamina.current < gameState.stamina.max) {
                 gameState.stamina.current = Math.min(gameState.stamina.max, gameState.stamina.current + 0.05);
                 if (Math.random() < 0.02) updateInventory();
