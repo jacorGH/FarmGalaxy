@@ -34,7 +34,7 @@
         #terraform-line { margin-top: 2px; }
         #spin-toggle { display: none; }
         #spin-toggle.show { display: flex; }
-        #mp-toggle, #map-toggle, #bag-toggle, #spin-toggle, #help-toggle { width: clamp(38px, 11vw, 44px); height: clamp(38px, 11vw, 44px); background: rgba(255,255,255,0.94); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(16px, 4.6vw, 19px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); border: 2px solid #ddd; cursor: pointer; }
+        #mp-toggle, #map-toggle, #bag-toggle, #spin-toggle { width: clamp(38px, 11vw, 44px); height: clamp(38px, 11vw, 44px); background: rgba(255,255,255,0.94); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: clamp(16px, 4.6vw, 19px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); border: 2px solid #ddd; cursor: pointer; }
         #mp-panel { position: absolute; top: 140px; left: 14px; width: 220px; background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.25); border-radius: 14px; padding: 14px; color: white; z-index: 109; display: none; flex-direction: column; gap: 8px; text-align: center; font-size: 13px; }
         #mp-panel.open { display: flex; }
         .mp-btn { padding: 8px; border-radius: 10px; border: none; background: #ff4081; color: white; font-weight: bold; cursor: pointer; font-size: 13px; }
@@ -130,6 +130,10 @@
         #map-overlay.open { display: flex; }
         #map-header { width: 100%; padding: 14px 18px; box-sizing: border-box; font-weight: 900; font-size: 16px; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
         #map-close { cursor: pointer; font-size: 20px; opacity: 0.8; padding: 0 6px; }
+        #map-help { position: absolute; top: 48px; left: 16px; z-index: 420; cursor: pointer;
+            background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.32);
+            color: #fff; font-size: 11px; font-weight: bold; padding: 5px 11px; border-radius: 13px; }
+        #map-help:active { background: rgba(255,255,255,0.24); }
         #map-canvas { flex: 1 1 auto; min-height: 0; width: 100%; display: block; touch-action: none; }
         #map-labels { position: absolute; inset: 0; pointer-events: none; }
         .map-label { position: absolute; transform: translate(-50%, 0); font-size: 11px; font-weight: bold; text-align: center; text-shadow: 0 2px 4px #000; white-space: nowrap; }
@@ -211,7 +215,6 @@
             <div id="mp-toggle" onclick="toggleMP()">👥</div>
             <div id="map-toggle" onclick="toggleMap()">🗺️</div>
             <div id="bag-toggle" onclick="toggleBag()">🧺</div>
-            <div id="help-toggle" onclick="openTutorial()">❓</div>
             <div id="spin-toggle" onclick="toggleSpin()">↺</div>
         </div>
     </div>
@@ -285,6 +288,7 @@
 
     <div id="map-overlay">
         <div id="map-header">🌌 Galaxy Map<span id="map-close" onclick="toggleMap()">✕</span></div>
+        <div id="map-help" onclick="openTutorial()">❓ How to play</div>
         <canvas id="map-canvas"></canvas>
         <div id="map-labels"></div>
         <div id="map-bottom">
@@ -1854,6 +1858,7 @@
             document.getElementById('tut-panel').classList.remove('open');
             document.getElementById('tut-backdrop').classList.remove('open');
             tutorialOpen = false;
+            if (mapOpen) { renderMapStats(); renderMapDetail(); }   // came from the map; refresh it
             try { localStorage.setItem('galaxyFarmSeenTutorial', '1'); } catch (e) {}
         };
         window.tutNext = () => {
@@ -1873,7 +1878,8 @@
             { icon: '✂️',  tool: 'shears' },
             { icon: '🧺',  act: 'bag'     },
             { icon: '🗺️',  act: 'map'     },
-            { icon: '👥',  act: 'social'  }
+            { icon: '👥',  act: 'social'  },
+            { icon: '↺',   act: 'spin'    }
         ];
         let radialOpen = false, tutorialOpen = false;
 
@@ -1891,6 +1897,7 @@
             if (item.act === 'bag') toggleBag();
             else if (item.act === 'map') toggleMap();
             else if (item.act === 'social') toggleMP();
+            else if (item.act === 'spin') toggleSpin();
         };
 
         function openRadial(x, y) {
@@ -1899,13 +1906,14 @@
             const cx = Math.max(pad, Math.min(window.innerWidth - pad, x));
             const cy = Math.max(pad, Math.min(window.innerHeight - pad, y));
             const host = document.getElementById('radial');
-            const r = 84, n = RADIAL_ITEMS.length;
+            const r = 92, n = RADIAL_ITEMS.length;   // wider ring now there are more entries
             let html = `<div class="radial-hub" style="left:${cx}px;top:${cy}px"></div>`;
             RADIAL_ITEMS.forEach((it, i) => {
                 const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
                 const ix = cx + Math.cos(a) * r, iy = cy + Math.sin(a) * r;
-                const locked = it.tool && !toolOwned(it.tool);
+                const locked = (it.tool && !toolOwned(it.tool)) || (it.act === 'spin' && window.activeTool !== 'hand');
                 const current = it.tool && it.tool === window.activeTool;
+                if (it.act === 'spin') it.icon = handSpin > 0 ? '↺' : '↻';
                 html += `<div class="radial-item${locked ? ' locked' : ''}${current ? ' current' : ''}" `
                       + `style="left:${ix}px;top:${iy}px" onclick="radialPick(${i})">${it.icon}</div>`;
             });
@@ -3690,6 +3698,7 @@
         revealNewWorlds();
         rebuildCropBar();
         refreshToolLocks();
+        refreshSpinButton();
         updateTerraformHUD();
         updateInventory();
 
