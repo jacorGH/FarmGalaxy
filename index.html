@@ -249,6 +249,8 @@
         <div class="store-row"><span>🧪 Energy Tonic <span id="tonic-info"></span></span><button class="mp-btn mp-small" id="buy-tonic" onclick="buyTonic()">Buy</button></div>
         <div class="mp-or">— tools —</div>
         <div class="store-row"><span>✂️ Shears</span><button class="mp-btn mp-small" id="buy-shears" onclick="storeBuyTool('shears')">Buy 500c</button></div>
+        <div class="mp-or">— sell gathered materials —</div>
+        <div id="store-materials"></div>
         <div class="mp-or">— supplies —</div>
         <div class="store-row"><span>🪓 Wood</span><button class="mp-btn mp-small" onclick="storeBuy('wood')">Buy 20c</button></div>
         <div class="store-row"><span>🪨 Stone</span><button class="mp-btn mp-small" onclick="storeBuy('stone')">Buy 15c</button></div>
@@ -2592,6 +2594,7 @@
             if (msg.tool === 'sellall') { storeSellAll(); return; }
             if (msg.tool === 'buy') { storeBuy(msg.item); return; }
             if (msg.tool === 'buytool') { storeBuyTool(msg.item); return; }
+            if (msg.tool === 'sellmat') { sellMaterial(msg.item, msg.all); return; }
             if (msg.tool === 'plow') {
                 const p = planets[msg.planetIdx]; if (!p) return;
                 doPlow(p, new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), new THREE.Vector3(msg.norm.x, msg.norm.y, msg.norm.z), false);
@@ -2854,6 +2857,12 @@
 
         // --- STORE ---
         const STORE_PRICES = { wood: 20, stone: 15, crystal: 250 };
+        // Buy-back prices are well under the purchase price so there's no buy-low-sell-high
+        // exploit, but gathering is always a route back to coins. Trees regrow, so this is a
+        // renewable income floor: without it a player who ate all their produce and hadn't
+        // bought shears had no way to earn anything at all.
+        const MATERIAL_SELL = { wood: 8, stone: 6, crystal: 90 };
+        const MATERIAL_LABEL = { wood: '🪓 Wood', stone: '🪨 Stone', crystal: '💎 Crystal' };
         const STORE_SELL_RATE = 0.9; // instant cash, slightly under shipping-bin value
 
         function storeStatus(msg) { const el = document.getElementById('store-status'); if (el) el.innerText = msg; }
@@ -2879,6 +2888,20 @@
                 shearBtn.innerText = owned ? 'Owned' : 'Buy 500c';
                 shearBtn.disabled = owned;
                 shearBtn.style.opacity = owned ? '0.5' : '1';
+            }
+            // Materials you're carrying, with buy-back buttons
+            const matEl = document.getElementById('store-materials');
+            if (matEl) {
+                const rows = Object.keys(MATERIAL_SELL).map(id => {
+                    const have = gameState.inventory[id] || 0;
+                    if (have <= 0) return '';
+                    return `<div class="store-row"><span>${MATERIAL_LABEL[id]} <b>x${have}</b> `
+                         + `<span class="bag-worth">${MATERIAL_SELL[id]}c ea</span></span>`
+                         + `<span><button class="sto-btn sto-out" onclick="sellMaterial('${id}',false)">Sell 1</button> `
+                         + `<button class="sto-btn sto-out" onclick="sellMaterial('${id}',true)">All</button></span></div>`;
+                }).filter(Boolean);
+                matEl.innerHTML = rows.length ? rows.join('')
+                    : '<div class="bag-empty">Chop trees and break rocks to gather materials.</div>';
             }
             document.getElementById('store-produce').innerHTML =
                 lines.length ? lines.join('<br>') + `<br><b>Total: ${total}c</b>` : 'No produce to sell.';
@@ -2932,6 +2955,20 @@
             playSFX('pop'); updateInventory(); refreshStorePanel();
             storeStatus(`Bought ${TOOL_SHOP[t].name}!`);
             broadcastWorldSync();
+        };
+
+        window.sellMaterial = (item, all) => {
+            if (isGuest()) { sendMPAction({ tool: 'sellmat', item, all: !!all }); storeStatus('Sent to the farm owner.'); return; }
+            const price = MATERIAL_SELL[item];
+            if (!price) return;
+            const have = gameState.inventory[item] || 0;
+            const n = all ? have : Math.min(1, have);
+            if (n <= 0) { storeStatus(`No ${item} to sell.`); return; }
+            gameState.inventory[item] = have - n;
+            gameState.money += price * n;
+            playSFX('pop'); updateInventory(); refreshStorePanel();
+            storeStatus(`Sold ${n} ${item} for ${price * n}c.`);
+            saveGame(); broadcastWorldSync();
         };
 
         window.storeBuy = (item) => {
@@ -3587,7 +3624,13 @@
                     const def = CROP_DEFS[gameState.selectedCrop];
                     if (!def) { flashStatus('Pick a seed first.'); return; }
                     if (!inSeason(gameState.selectedCrop)) { flashStatus(`${def.name} won't grow in ${currentSeason().name}.`); return; }
-                    if (gameState.money < def.seedCost) { flashStatus(`Need ${def.seedCost}c for ${def.name}`); return; }
+                    if (gameState.money < def.seedCost) {
+                        const wood = gameState.inventory.wood || 0, stone = gameState.inventory.stone || 0;
+                        flashStatus((wood + stone > 0)
+                            ? `Need ${def.seedCost}c — sell wood or stone at Star Market.`
+                            : `Need ${def.seedCost}c — chop trees, then sell the wood at Star Market.`);
+                        return;
+                    }
                     gameState.money -= def.seedCost;
                     plantCrop(obj, gameState.selectedCrop);
                     updateInventory();
