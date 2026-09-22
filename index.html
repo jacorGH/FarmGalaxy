@@ -43,6 +43,29 @@
         #mp-link { color: #90caf9; font-size: 11px; text-decoration: none; opacity: 0.9; }
         .mp-or { opacity: 0.6; font-size: 11px; }
 
+        /* FISHING MINIGAME */
+        #fish-backdrop { position: fixed; inset: 0; background: rgba(2,4,10,0.82); z-index: 900; display: none; }
+        #fish-backdrop.open { display: block; }
+        #fish-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            width: min(260px, 84vw); background: rgba(10,16,28,0.98); border: 1px solid rgba(255,255,255,0.32);
+            border-radius: 20px; padding: 16px; color: #fff; z-index: 910; display: none;
+            flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 20px 70px rgba(0,0,0,0.8); }
+        #fish-panel.open { display: flex; }
+        #fish-title { font-size: 15px; font-weight: 900; letter-spacing: 0.5px; }
+        #fish-track { position: relative; width: 64px; height: 210px; border-radius: 10px;
+            background: linear-gradient(#bfe4ff, #1c6fa8); border: 2px solid #0a3a5c; overflow: hidden; }
+        #fish-icon { position: absolute; left: 50%; transform: translate(-50%, -50%); font-size: 24px; top: 50%; transition: top 0.05s linear; }
+        #fish-bar { position: absolute; left: 2px; right: 2px; background: rgba(255,255,255,0.35);
+            border: 2px solid #fff; border-radius: 6px; top: 40%; height: 20%; transition: top 0.05s linear, background 0.1s; }
+        #fish-bar.hit { background: rgba(139,255,139,0.55); border-color: #8bff8b; }
+        #fish-progress-track { width: 100%; height: 10px; background: rgba(255,255,255,0.15); border-radius: 6px; overflow: hidden; }
+        #fish-progress-fill { height: 100%; width: 35%; background: #43a047; transition: width 0.05s linear; }
+        #fish-hint { font-size: 11px; opacity: 0.8; text-align: center; }
+        #fish-reel-btn { width: 100%; padding: 12px; border: none; border-radius: 12px; background: #ff4081;
+            color: #fff; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; cursor: pointer;
+            -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        #fish-reel-btn:active { background: #e0356f; }
+
         /* HOW TO PLAY */
         #tut-backdrop { position: fixed; inset: 0; background: rgba(2,0,8,0.82); z-index: 900; display: none; }
         #tut-backdrop.open { display: block; }
@@ -239,6 +262,7 @@
         <div class="tool" id="tool-hammer" onclick="selectTool('hammer')">🔨</div>
         <div class="tool" id="tool-fence" onclick="selectTool('fence')">🚧</div>
         <div class="tool" id="tool-shears" onclick="selectTool('shears')">✂️</div>
+        <div class="tool" id="tool-rod" onclick="selectTool('rod')">🎣</div>
     </div>
     <div id="crop-bar"></div>
 
@@ -249,6 +273,7 @@
         <div class="store-row"><span>🧪 Energy Tonic <span id="tonic-info"></span></span><button class="mp-btn mp-small" id="buy-tonic" onclick="buyTonic()">Buy</button></div>
         <div class="mp-or">— tools —</div>
         <div class="store-row"><span>✂️ Shears</span><button class="mp-btn mp-small" id="buy-shears" onclick="storeBuyTool('shears')">Buy 500c</button></div>
+        <div class="store-row"><span>🎣 Fishing Rod</span><button class="mp-btn mp-small" id="buy-rod" onclick="storeBuyTool('rod')">Buy 350c</button></div>
         <div class="mp-or">— sell gathered materials —</div>
         <div id="store-materials"></div>
         <div class="mp-or">— supplies —</div>
@@ -259,6 +284,18 @@
         <button class="mp-btn mp-close" onclick="closeStore()">Close</button>
     </div>
 
+    <div id="fish-backdrop"></div>
+    <div id="fish-panel">
+        <div id="fish-title">🎣 Fishing</div>
+        <div id="fish-track">
+            <div id="fish-icon">🐟</div>
+            <div id="fish-bar"></div>
+        </div>
+        <div id="fish-progress-track"><div id="fish-progress-fill"></div></div>
+        <div id="fish-hint">Hold to reel up — keep the bar on the fish!</div>
+        <button id="fish-reel-btn">HOLD TO REEL</button>
+        <button class="tut-skip" onclick="cancelFishing()">Give up</button>
+    </div>
     <div id="tut-backdrop"></div>
     <div id="tut-panel">
         <div id="tut-art"></div>
@@ -470,16 +507,27 @@
             corn:      { name: 'Corn',      icon: '🌽', color: 0xffe066, growDays: 5, regrowDays: 3, seedCost: 40,  sellPrice: 70,  seasons: ['summer'] },
             pumpkin:   { name: 'Pumpkin',   icon: '🎃', color: 0xff8c00, growDays: 6, regrowDays: 0, seedCost: 60,  sellPrice: 200, seasons: ['fall'] },
             icemelon:  { name: 'Ice Melon', icon: '🍈', color: 0xa8e6ff, growDays: 5, regrowDays: 0, seedCost: 45,  sellPrice: 130, seasons: ['winter'] },
-            starfruit: { name: 'Starfruit', icon: '⭐', color: 0xffd700, growDays: 8, regrowDays: 0, seedCost: 150, sellPrice: 650, seasons: ALL_SEASONS }
+            starfruit: { name: 'Starfruit', icon: '⭐', color: 0xffd700, growDays: 8, regrowDays: 0, seedCost: 150, sellPrice: 650, seasons: ALL_SEASONS },
+            // Grass is grown for animal feed, not for sale. It regrows fast so one patch keeps
+            // producing, but it competes with cash crops for plot space — that's the tradeoff.
+            grass:     { name: 'Grass',     icon: '🌿', color: 0x7cb342, growDays: 2, regrowDays: 1, seedCost: 8,   sellPrice: 5,   seasons: ALL_SEASONS, yields: 'fodder' }
         };
         function inSeason(id, day) {
             const d = CROP_DEFS[id];
             return !!d && d.seasons.includes(SEASONS[seasonIndex(day === undefined ? gameState.day : day)].key);
         }
         function plantableCrops() { return Object.keys(CROP_DEFS).filter(id => inSeason(id)); }
-        const GOODS = { wool: { name: 'Wool', sellPrice: 90 } };   // non-crop sellables
-        const ITEM_ICONS = new Proxy({ wool: '🧶' }, {
-            get: (t, k) => t[k] || (CROP_DEFS[k] && CROP_DEFS[k].icon) || '•'
+        const GOODS = {                                     // non-crop sellables
+            wool:     { name: 'Wool',      sellPrice: 90,  icon: '🧶' },
+            finewool: { name: 'Fine Wool', sellPrice: 220, icon: '✨' },
+            fodder:   { name: 'Fodder',    sellPrice: 5,   icon: '🌾' },
+            minnow:   { name: 'Minnow',      sellPrice: 20,  icon: '🐟' },
+            starbass: { name: 'Star Bass',   sellPrice: 55,  icon: '🐠' },
+            voideel:  { name: 'Void Eel',    sellPrice: 120, icon: '🐍' },
+            glimcarp: { name: 'Glimmer Carp',sellPrice: 200, icon: '🎏' }
+        };
+        const ITEM_ICONS = new Proxy({}, {
+            get: (t, k) => (GOODS[k] && GOODS[k].icon) || (CROP_DEFS[k] && CROP_DEFS[k].icon) || '•'
         });
         function goodName(id) { return CROP_DEFS[id] ? CROP_DEFS[id].name : (GOODS[id] ? GOODS[id].name : id); }
         function sellPriceOf(id) { return CROP_DEFS[id] ? CROP_DEFS[id].sellPrice : (GOODS[id] ? GOODS[id].sellPrice : 0); }
@@ -585,7 +633,7 @@
 
         function totalProduce() {
             let n = 0;
-            for (const k in gameState.inventory.produce) { if (CROP_DEFS[k]) n += gameState.inventory.produce[k] || 0; }
+            for (const k in gameState.inventory.produce) { if (CROP_DEFS[k] && !CROP_DEFS[k].yields) n += gameState.inventory.produce[k] || 0; }
             return n;
         }
 
@@ -604,10 +652,10 @@
             pendingSale: {},
             selectedCrop: 'turnip',
             storage: {},
-            tools: { shears: false }        // absent/true = owned; shears must be bought
+            tools: { shears: false, rod: false }   // absent/true = owned; these must be bought
         };
 
-        const TOOL_SHOP = { shears: { name: 'Shears', price: 500 } };
+        const TOOL_SHOP = { shears: { name: 'Shears', price: 500 }, rod: { name: 'Fishing Rod', price: 350 } };
         function toolOwned(t) { return gameState.tools[t] !== false; }
 
         function refreshToolLocks() {
@@ -866,7 +914,48 @@
                     const want = Math.min(2, ROCK_CAP - countProps(p, 'stone'));
                     for (let i = 0; i < want; i++) spawnProp(p, 'stone');
                 }
+                // Rarer than tree regrowth, so wild grass stays an occasional find.
+                const wgCount = wildGrass.filter(w => w.userData.planet === p).length;
+                if (wgCount < WILD_GRASS_CAP && Math.random() < 0.35) spawnWildGrassRandom(p);
             });
+        }
+
+        // Wild grass: found growing loose on any planet, distinct from the grass CROP you
+        // plant and till (that one lives in a plot and regrows on a schedule; this one is
+        // free foraging you stumble on while wandering, capped low so it stays a bonus
+        // rather than a real supply). Tap with any tool to cut it for a little fodder.
+        const WILD_GRASS_CAP = 4;
+        const wildGrass = [];
+
+        function spawnWildGrass(planet, pos) {
+            const radius = planet.userData.radius;
+            const tuft = new THREE.Mesh(new THREE.ConeGeometry(radius * 0.035, radius * 0.09, 5),
+                new THREE.MeshToonMaterial({ color: 0x9ccc65 }));
+            const n = pos.clone().sub(planet.position).normalize();
+            tuft.position.copy(planet.position).addScaledVector(n, radius);
+            tuft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+            tuft.userData = { type: 'wildgrass', planet, phase: Math.random() * 6 };
+            tuft.castShadow = true;
+            scene.add(tuft); addOutline(tuft, 0.15); interactables.push(tuft); wildGrass.push(tuft);
+            return tuft;
+        }
+
+        function spawnWildGrassRandom(planet) {
+            const n = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
+            const pos = n.clone().multiplyScalar(planet.userData.radius).add(planet.position);
+            if (interactables.some(o => o.position.distanceTo(pos) < 1.2)) return null;
+            return spawnWildGrass(planet, pos);
+        }
+
+        function cutWildGrass(tuft) {
+            gameState.inventory.produce.fodder = (gameState.inventory.produce.fodder || 0) + 1;
+            const wi = wildGrass.indexOf(tuft); if (wi >= 0) wildGrass.splice(wi, 1);
+            const ii = interactables.indexOf(tuft); if (ii >= 0) interactables.splice(ii, 1);
+            activeAnims.push({ obj: tuft, time: 0, type: 'destroy' });
+            playSFX('pop');
+            flashStatus('Cut wild grass (+1 fodder).');
+            updateInventory();
+            broadcastWorldSync();
         }
 
         // Energy berries: found while clearing trees and breaking ground. Tap to eat.
@@ -954,7 +1043,11 @@
                 rows.push('<div class="bag-head">Carrying</div>');
                 goods.forEach(([id, label, n, edible]) => {
                     const worth = id === 'berry' ? '' : `<span class="bag-worth">${sellPriceOf(id)}c ea</span>`;
-                    const btn = edible ? `<button class="bag-eat" onclick="eatItem('${id}')">Eat +${EDIBLE[id]}</button>` : '';
+                    let btn = edible ? `<button class="bag-eat" onclick="eatItem('${id}')">Eat +${EDIBLE[id]}</button>` : '';
+                    if (id === 'fodder') {
+                        const penned = creatures.filter(c => c.userData.penned).length;
+                        btn = `<button class="bag-eat" onclick="feedFlock()">Feed ${penned} 🐑</button>`;
+                    }
                     rows.push(`<div class="bag-row"><span>${label} <b>x${n}</b> ${worth}</span>${btn}</div>`);
                 });
             }
@@ -964,6 +1057,204 @@
             rows.push(`<div class="bag-head">⚡ Energy ${st}/${gameState.stamina.max} · ⭐ Level ${gameState.level || 1}</div>`);
             rows.push(`<div class="bag-head">${currentSeason().icon} ${currentSeason().name}, day ${dayOfSeason()} of ${SEASON_LEN} · Year ${currentYear()}</div>`);
             el.innerHTML = rows.join('');
+        }
+
+        // --- PONDS & FISHING ---
+        // A pond appears once a planet reaches the Water stage, so fishing is a reward for
+        // terraform progress rather than something handed out at the start.
+        const ponds = [];
+        // barSize = how forgiving the reel zone is (bigger = easier). fishSpeed = how fast the
+        // fish eases toward a new target. rest* = how long it lingers before picking a new one.
+        // Rarer, more valuable fish get a smaller bar and faster, more erratic movement.
+        const FISH = [
+            { id: 'minnow',   weight: 50, barSize: 0.22, fishSpeed: 0.016, restMin: 45, restVar: 45 },
+            { id: 'starbass', weight: 28, barSize: 0.17, fishSpeed: 0.024, restMin: 32, restVar: 36 },
+            { id: 'voideel',  weight: 15, barSize: 0.13, fishSpeed: 0.032, restMin: 22, restVar: 28 },
+            { id: 'glimcarp', weight: 7,  barSize: 0.10, fishSpeed: 0.042, restMin: 15, restVar: 20 }
+        ];
+        const FISH_STAMINA = 3;
+
+        function spawnPond(planet, normal) {
+            const n = (normal || new THREE.Vector3(0.3, 0.75, -0.6)).clone().normalize();
+            const R = planet.userData.radius;
+            // Previous version sat at R-0.1 — INSIDE the planet mesh (surface is at R), so the
+            // water was mostly buried. It now sits on the surface with a raised earthen rim,
+            // and the water is held near the top of the rim rather than level with the ground,
+            // so the whole thing reads as a basin standing proud of the terrain.
+            const pos = n.clone().multiplyScalar(R).add(planet.position);
+            const pond = new THREE.Group();
+
+            const waterR = R * 0.16;
+            const bankTube = R * 0.022;   // was 0.05 — a slimmer, lower lip rather than a thick donut
+            const rimH = bankTube;   // tube-centre height; the tube's underside then rests on the ground
+
+            const bank = new THREE.Mesh(
+                new THREE.TorusGeometry(waterR * 1.05, bankTube, 8, 20),
+                new THREE.MeshToonMaterial({ color: 0x6d5a45 })
+            );
+            bank.rotation.x = Math.PI / 2;
+            bank.position.y = rimH;
+            bank.castShadow = true;
+            addOutline(bank, 0.06);
+
+            const water = new THREE.Mesh(
+                new THREE.CircleGeometry(waterR, 24),
+                new THREE.MeshToonMaterial({ color: 0x3d9bd6, transparent: true, opacity: 0.92 })
+            );
+            water.rotation.x = -Math.PI / 2;
+            water.position.y = rimH * 0.85;   // held just below the rim's crest
+
+            pond.add(bank, water);
+            pond.position.copy(pos);
+            pond.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+            pond.userData = { type: 'pond', planet, normal: n.clone(), phase: Math.random() * 6, water };
+            scene.add(pond); interactables.push(pond); ponds.push(pond);
+            return pond;
+        }
+
+        function rollFish() {
+            const total = FISH.reduce((a, f) => a + f.weight, 0);
+            let r = Math.random() * total;
+            for (const f of FISH) { r -= f.weight; if (r <= 0) return f.id; }
+            return FISH[0].id;
+        }
+
+        // --- FISHING MINIGAME ---
+        // A vertical reel bar you hold to raise against gravity, trying to keep it over the
+        // fish icon as it wanders. Runs entirely client-side on whoever is fishing (host or
+        // guest) — only the RESULT (a catch, or nothing) is ever sent over the network, so
+        // there's no need to synchronise the minigame's physics frame by frame.
+        const REEL_ACCEL = 0.0032, REEL_GRAVITY = 0.0022, REEL_MAXVEL = 0.05;
+        const PROGRESS_GAIN = 0.0075, PROGRESS_LOSS = 0.0045;
+        let fishingOpen = false;
+        const fishGame = {
+            active: false, pond: null, fishId: null, cfg: null,
+            fishPos: 0.5, fishTarget: 0.5, fishClock: 0, fishRestUntil: 0,
+            barPos: 0.5, barVel: 0, progress: 0.35, holding: false
+        };
+
+        function fishPond(pond, charge = true) {
+            if (fishGame.active) { flashStatus('Already fishing!'); return false; }
+            if (!toolOwned('rod')) { flashStatus(`Buy a fishing rod at Star Market (${TOOL_SHOP.rod.price}c).`); return false; }
+            if (charge && gameState.stamina.current < FISH_STAMINA) { flashStatus('Too tired to fish!'); return false; }
+            if (charge) { gameState.stamina.current -= FISH_STAMINA; updateInventory(); }
+            startFishing(pond);
+            return true;
+        }
+
+        function startFishing(pond) {
+            const fishId = rollFish();
+            const cfg = FISH.find(f => f.id === fishId);
+            Object.assign(fishGame, {
+                active: true, pond, fishId, cfg,
+                fishPos: 0.5, fishTarget: 0.5, fishClock: 0, fishRestUntil: 0,
+                barPos: 0.5, barVel: 0, progress: 0.35, holding: false
+            });
+            fishingOpen = true;
+            if (document.pointerLockElement) document.exitPointerLock();
+            document.getElementById('fish-title').innerText = 'Something is biting...';
+            document.getElementById('fish-panel').classList.add('open');
+            document.getElementById('fish-backdrop').classList.add('open');
+            renderFishingUI(false);
+        }
+
+        function updateFishingGame() {
+            const fg = fishGame;
+            if (!fg.active) return;
+            const cfg = fg.cfg;
+
+            if (fg.holding) fg.barVel += REEL_ACCEL; else fg.barVel -= REEL_GRAVITY;
+            fg.barVel = Math.max(-REEL_MAXVEL, Math.min(REEL_MAXVEL, fg.barVel));
+            fg.barPos += fg.barVel;
+            if (fg.barPos < 0) { fg.barPos = 0; fg.barVel = 0; }
+            if (fg.barPos > 1) { fg.barPos = 1; fg.barVel = 0; }
+
+            fg.fishClock++;
+            if (fg.fishClock > fg.fishRestUntil) {
+                fg.fishTarget = Math.random();
+                fg.fishRestUntil = fg.fishClock + cfg.restMin + Math.random() * cfg.restVar;
+            }
+            fg.fishPos += (fg.fishTarget - fg.fishPos) * cfg.fishSpeed;
+
+            const inRange = Math.abs(fg.fishPos - fg.barPos) < cfg.barSize;
+            fg.progress += inRange ? PROGRESS_GAIN : -PROGRESS_LOSS;
+            fg.progress = Math.max(0, Math.min(1, fg.progress));
+
+            renderFishingUI(inRange);
+            if (fg.progress >= 1) finishFishing(true);
+            else if (fg.progress <= 0) finishFishing(false);
+        }
+
+        function renderFishingUI(inRange) {
+            const fg = fishGame;
+            const bar = document.getElementById('fish-bar');
+            const icon = document.getElementById('fish-icon');
+            const prog = document.getElementById('fish-progress-fill');
+            if (bar) {
+                bar.style.top = ((1 - fg.barPos - fg.cfg.barSize) * 100) + '%';
+                bar.style.height = (fg.cfg.barSize * 2 * 100) + '%';
+                bar.classList.toggle('hit', inRange);
+            }
+            if (icon) icon.style.top = ((1 - fg.fishPos) * 100) + '%';
+            if (prog) prog.style.width = (fg.progress * 100) + '%';
+        }
+
+        function finishFishing(success) {
+            const fg = fishGame;
+            const pond = fg.pond, fishId = fg.fishId;
+            fg.active = false; fg.holding = false;
+            fishingOpen = false;
+            document.getElementById('fish-panel').classList.remove('open');
+            document.getElementById('fish-backdrop').classList.remove('open');
+            if (success) {
+                playSFX('pop');
+                flashStatus(`Caught a ${goodName(fishId)}! ${ITEM_ICONS[fishId]}`);
+                activeAnims.push({ obj: pond.userData.water, time: 0, type: 'hitflash', baseScale: 1 });
+                if (isGuest()) {
+                    sendMPAction({ tool: 'fishcatch', fishId });
+                } else {
+                    gameState.inventory.produce[fishId] = (gameState.inventory.produce[fishId] || 0) + 1;
+                    updateInventory();
+                    broadcastWorldSync();
+                }
+            } else {
+                playSFX('thud');
+                flashStatus('The fish got away...');
+            }
+        }
+
+        window.fishReelDown = () => { fishGame.holding = true; };
+        window.fishReelUp = () => { fishGame.holding = false; };
+        window.cancelFishing = () => { if (fishGame.active) finishFishing(false); };
+
+        // A planet gains its pond the first time it reaches Water stage.
+        // Tries a number of random spots and picks one clear of whatever's already built —
+        // the old fixed direction meant a pond could (and did) form directly on top of an
+        // established farm layout. Falls back to the least-crowded spot tried if the planet
+        // is packed everywhere, so this never fails outright.
+        function findPondSpot(planet) {
+            const R = planet.userData.radius;
+            const clearance = R * 0.16 * 1.5 + 1.0;   // pond footprint plus a comfortable buffer
+            const onThisPlanet = interactables.filter(o => o.userData.planet === planet && o.userData.type !== 'sheep');
+            let best = null, bestMinDist = -1;
+            for (let attempt = 0; attempt < 80; attempt++) {
+                const n = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
+                const pos = n.clone().multiplyScalar(R).add(planet.position);
+                let minDist = Infinity;
+                for (const o of onThisPlanet) { const d = o.position.distanceTo(pos); if (d < minDist) minDist = d; }
+                if (minDist >= clearance) return n;
+                if (minDist > bestMinDist) { bestMinDist = minDist; best = n; }
+            }
+            return best || new THREE.Vector3(0.3, 0.75, -0.6).normalize();
+        }
+
+        function updatePonds() {
+            planets.forEach(p => {
+                if (!isTerraformable(p) || p.userData.stage < 3 || p.userData.hasPond) return;
+                p.userData.hasPond = true;
+                spawnPond(p, findPondSpot(p));
+                flashStatus(`💧 A pond has formed on ${p.userData.name}!`);
+            });
         }
 
         // --- SHEEP ---
@@ -987,7 +1278,8 @@
             sheep.userData = {
                 type: 'sheep', planet: p, offset: off, jumpTime: Math.random()*10, e1, e2, body,
                 penned: !!(state && state.penned), woolDays: (state && state.woolDays) || 0,
-                hasWool: !!(state && state.hasWool)
+                hasWool: !!(state && state.hasWool), fineWool: !!(state && state.fineWool),
+                fedCount: (state && state.fedCount) || 0, fedToday: !!(state && state.fedToday)
             };
             scene.add(sheep); creatures.push(sheep); interactables.push(sheep);
             updateSheepLook(sheep);
@@ -1083,8 +1375,9 @@
 
         function updateSheepLook(s) {
             const woolly = s.userData.hasWool;
-            s.userData.body.material.color.set(woolly ? 0xffffff : 0xd9d2c5);
-            s.userData.body.scale.setScalar(woolly ? 1.0 : 0.82);
+            const fine = woolly && s.userData.fineWool;
+            s.userData.body.material.color.set(fine ? 0xfff3c4 : (woolly ? 0xffffff : 0xd9d2c5));
+            s.userData.body.scale.setScalar(woolly ? (fine ? 1.06 : 1.0) : 0.82);
         }
 
         function fencesNear(pos, planet) {
@@ -1186,20 +1479,51 @@
                 flashStatus(left > 0 ? `Wool ready in ${left} more penned day${left>1?'s':''}.` : 'No wool yet.');
                 return;
             }
+            const kind = s.userData.fineWool ? 'finewool' : 'wool';
             s.userData.hasWool = false; s.userData.woolDays = 0;
+            s.userData.fineWool = false; s.userData.fedCount = 0;
             updateSheepLook(s);
-            gameState.inventory.produce.wool = (gameState.inventory.produce.wool || 0) + 1;
+            gameState.inventory.produce[kind] = (gameState.inventory.produce[kind] || 0) + 1;
             playSFX('pop');
-            flashStatus('Sheared 1 wool!');
+            flashStatus(kind === 'finewool' ? 'Sheared ✨ Fine Wool!' : 'Sheared 1 wool!');
             updateInventory(); broadcastWorldSync();
         }
+
+        // Feeding is a daily chore done from the bag: one fodder per penned sheep. A sheep fed
+        // every day of its wool cycle produces Fine Wool instead of ordinary wool.
+        window.feedFlock = () => {
+            if (isGuest()) { sendMPAction({ tool: 'feed' }); bagNote('Sent to the farm owner.'); return; }
+            let fodder = gameState.inventory.produce.fodder || 0;
+            if (fodder <= 0) { bagNote('No fodder — grow 🌿 grass and cut it.'); return; }
+            const hungry = creatures.filter(s => s.userData.penned && !s.userData.fedToday);
+            if (!hungry.length) { bagNote('No penned sheep need feeding right now.'); return; }
+            let fed = 0;
+            hungry.forEach(s => {
+                if (fodder <= 0) return;
+                fodder--; fed++;
+                s.userData.fedToday = true;
+                s.userData.fedCount = (s.userData.fedCount || 0) + 1;
+            });
+            gameState.inventory.produce.fodder = fodder;
+            playSFX('pop');
+            bagNote(`Fed ${fed} sheep${fed < hungry.length ? ` (${hungry.length - fed} still hungry)` : ''}.`);
+            updateInventory(); renderBag();
+            saveGame(); broadcastWorldSync();
+        };
 
         function growWool() {
             creatures.forEach(s => {
                 updatePenned(s);
-                if (!s.userData.penned || s.userData.hasWool) return;   // outside a pen: progress holds
+                const wasFed = s.userData.fedToday;
+                s.userData.fedToday = false;                          // a new day, a new meal
+                if (!s.userData.penned || s.userData.hasWool) return;  // outside a pen: progress holds
                 s.userData.woolDays++;
-                if (s.userData.woolDays >= WOOL_DAYS) { s.userData.hasWool = true; updateSheepLook(s); }
+                if (s.userData.woolDays >= WOOL_DAYS) {
+                    s.userData.hasWool = true;
+                    // Fine wool needs a full cycle of feeding, not just a meal at the end.
+                    s.userData.fineWool = (s.userData.fedCount || 0) >= WOOL_DAYS;
+                    updateSheepLook(s);
+                }
             });
         }
 
@@ -1218,6 +1542,7 @@
                 mesh.castShadow = true; scene.add(mesh); addOutline(mesh, 0.1); interactables.push(mesh);
             }
             for(let i=0; i<8; i++) spawnWeed(p);
+            for (let i = 0; i < WILD_GRASS_CAP; i++) { if (Math.random() < 0.55) spawnWildGrassRandom(p); }
         }
 
         function createPlanet(x, y, z, radius, color, name, deco, startStage = 0, skipDecoration = false) {
@@ -1408,6 +1733,7 @@
                 }
             });
             refreshClearedStages();
+            updatePonds();
             if (totalStages() !== stagesBefore) recomputeLevel(true);
             revealNewWorlds();
             updateTerraformHUD();
@@ -1487,7 +1813,7 @@
 
         // Read and validate the save BEFORE building the world. If it's unreadable we must
         // still generate trees/rocks/weeds, otherwise a bad save leaves totally barren planets.
-        const SAVE_VERSION = 8;
+        const SAVE_VERSION = 10;
         const BOOT_FLAG = 'galaxyFarmBooting';
         let pendingSave = null, saveQuarantined = false;
 
@@ -1607,7 +1933,7 @@
         const controls = { L: {active:false, id:-1, origin:{x:0,y:0}, curr:{x:0,y:0}}, R: {active:false, id:-1, origin:{x:0,y:0}, curr:{x:0,y:0}}, keys: {} };
         window.toggleTools = () => { document.getElementById('tool-list').classList.toggle('open'); };
         window.toggleMP = () => { document.getElementById('mp-panel').classList.toggle('open'); };
-        const TOOL_LABELS = { hand: '✋ HAND', plow: '⛏️ HOE', seed: '🌱 SEED', water: '💧 WATER', hammer: '🔨 HAMMER', fence: '🚧 FENCE', shears: '✂️ SHEARS' };
+        const TOOL_LABELS = { hand: '✋ HAND', plow: '⛏️ HOE', seed: '🌱 SEED', water: '💧 WATER', hammer: '🔨 HAMMER', fence: '🚧 FENCE', shears: '✂️ SHEARS', rod: '🎣 ROD' };
         function toolLabel(t) { return TOOL_LABELS[t] || t.toUpperCase(); }
 
         let handSpin = 1;   // +1 = counter-clockwise, -1 = clockwise
@@ -1673,7 +1999,7 @@
         // action ran twice (deposit then "nothing to sell", pick a sheep up then drop it).
         let lastTouchAt = 0;
         renderer.domElement.addEventListener('mousedown', (e) => {
-            if (mapOpen || bagOpen || storageOpen || tutorialOpen || document.getElementById('store-panel').classList.contains('open')) return;
+            if (mapOpen || bagOpen || storageOpen || tutorialOpen || fishingOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (performance.now() - lastTouchAt < 900) return;      // already handled as a touch
             if (document.pointerLockElement !== renderer.domElement && !/Android|iPhone/i.test(navigator.userAgent)) {
                 renderer.domElement.requestPointerLock();
@@ -1696,10 +2022,10 @@
         window.addEventListener('touchstart', (e) => {
             lastTouchAt = performance.now();
             // UI overlays swallow input entirely — no joysticks, no world interaction behind them
-            if (mapOpen || bagOpen || radialOpen || storageOpen || tutorialOpen || document.getElementById('store-panel').classList.contains('open')) return;
+            if (mapOpen || bagOpen || radialOpen || storageOpen || tutorialOpen || fishingOpen || document.getElementById('store-panel').classList.contains('open')) return;
             if (e.touches.length === 2) initialPinchDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
             for(let t of e.changedTouches) {
-                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.closest('#side-rail') || t.target.closest('#radial') || t.target.closest('#radial-backdrop') || t.target.closest('#mp-panel') || t.target.closest('#bag-panel') || t.target.closest('#bag-backdrop') || t.target.closest('#storage-panel') || t.target.closest('#tut-panel') || t.target.closest('#store-backdrop') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
+                if (t.target.closest('#tool-toggle') || t.target.closest('.tool') || t.target.closest('.crop-btn') || t.target.closest('#side-rail') || t.target.closest('#radial') || t.target.closest('#radial-backdrop') || t.target.closest('#mp-panel') || t.target.closest('#bag-panel') || t.target.closest('#bag-backdrop') || t.target.closest('#storage-panel') || t.target.closest('#tut-panel') || t.target.closest('#store-backdrop') || t.target.closest('#fish-panel') || t.target.closest('#fish-backdrop') || t.target.id === 'jump-btn' || t.target.id === 'start-btn') {
                     if(t.target.id === 'jump-btn') handleJump(); continue;
                 }
                 const x = t.clientX, y = t.clientY;
@@ -1903,7 +2229,7 @@
         };
 
         function openRadial(x, y) {
-            if (mapOpen || bagOpen) return;
+            if (mapOpen || bagOpen || fishingOpen) return;
             const pad = 96;
             const cx = Math.max(pad, Math.min(window.innerWidth - pad, x));
             const cy = Math.max(pad, Math.min(window.innerHeight - pad, y));
@@ -1951,6 +2277,19 @@
             press = null;
             if (quick && !radialOpen) handleInteraction(x, y);
         }
+
+        // Reel button: holding raises the bar, releasing lets gravity take it. Separate from
+        // the world's hold-to-open-radial-menu system since this needs sustained hold state,
+        // not a tap-vs-hold distinction. touchend is caught globally so sliding off the button
+        // before lifting still releases it, rather than leaving "holding" stuck true.
+        (function wireReelButton() {
+            const btn = document.getElementById('fish-reel-btn');
+            if (!btn) return;
+            btn.addEventListener('touchstart', (e) => { fishGame.holding = true; e.preventDefault(); e.stopPropagation(); }, { passive: false });
+            btn.addEventListener('mousedown', (e) => { fishGame.holding = true; e.stopPropagation(); });
+        })();
+        window.addEventListener('touchend', () => { fishGame.holding = false; });
+        window.addEventListener('mouseup', () => { fishGame.holding = false; });
 
         // --- CORE LOOP HELPERS ---
         // Messages are queued and each held for a minimum time, so a follow-up can't wipe
@@ -2040,10 +2379,11 @@
 
         function harvestCrop(c) {
             const def = CROP_DEFS[c.userData.cropId];
-            gameState.inventory.produce[c.userData.cropId] = (gameState.inventory.produce[c.userData.cropId] || 0) + 1;
+            const yieldId = def.yields || c.userData.cropId;   // grass cuts into fodder
+            gameState.inventory.produce[yieldId] = (gameState.inventory.produce[yieldId] || 0) + 1;
             gameState.totalHarvests++;
             playSFX('pop');
-            flashStatus('Harvested ' + def.name + '!');
+            flashStatus(def.yields ? ('Cut ' + goodName(def.yields) + '!') : ('Harvested ' + def.name + '!'));
             if (def.regrowDays > 0) {
                 c.userData.stage = 1;
                 c.userData.daysGrown = Math.max(0, def.growDays - def.regrowDays);
@@ -2169,8 +2509,8 @@
                 inventory: gameState.inventory, pendingSale: gameState.pendingSale, selectedCrop: gameState.selectedCrop,
                 tools: gameState.tools, storage: gameState.storage, staminaUpgrades: gameState.staminaUpgrades || 0,
                 playerPos: v3(player.position),
-                planets: planets.map(p => ({ stage: p.userData.stage, pending: p.userData.pending, maturedHere: p.userData.maturedHere || 0, discovered: !!p.userData.discovered, seeded: !!p.userData.seeded })),
-                props: [], weeds: [], mounds: [], fences: [], crops: [], berries: [], creatures: []
+                planets: planets.map(p => ({ stage: p.userData.stage, pending: p.userData.pending, maturedHere: p.userData.maturedHere || 0, discovered: !!p.userData.discovered, seeded: !!p.userData.seeded, hasPond: !!p.userData.hasPond })),
+                props: [], weeds: [], mounds: [], fences: [], crops: [], berries: [], creatures: [], wildgrass: []
             };
             const moundIndexMap = new Map();
             interactables.forEach(o => {
@@ -2180,6 +2520,7 @@
                 if (t === 'prop') data.props.push({ planetIdx, pos: v3(o.position), quat: q4(o.quaternion), resource: o.userData.resource, hits: o.userData.hitsRemaining });
                 else if (t === 'weed') data.weeds.push({ planetIdx, pos: v3(o.position), quat: q4(o.quaternion) });
                 else if (t === 'berry') data.berries.push({ planetIdx, pos: v3(o.position) });
+                else if (t === 'wildgrass') data.wildgrass.push({ planetIdx, pos: v3(o.position) });
                 else if (t === 'fence') data.fences.push({ planetIdx, pos: v3(o.position), quat: q4(o.quaternion) });
                 else if (t === 'mound') { moundIndexMap.set(o, data.mounds.length); data.mounds.push({ planetIdx, pos: v3(o.position), quat: q4(o.quaternion), hasCrop: o.userData.hasCrop }); }
             });
@@ -2187,7 +2528,8 @@
                 const pi = planets.indexOf(sh.userData.planet);
                 if (pi < 0) return;
                 data.creatures.push({ planetIdx: pi, offset: v3(sh.userData.offset),
-                    penned: !!sh.userData.penned, woolDays: sh.userData.woolDays || 0, hasWool: !!sh.userData.hasWool });
+                    penned: !!sh.userData.penned, woolDays: sh.userData.woolDays || 0, hasWool: !!sh.userData.hasWool,
+                    fineWool: !!sh.userData.fineWool, fedCount: sh.userData.fedCount || 0, fedToday: !!sh.userData.fedToday });
             });
             crops.forEach(c => {
                 data.crops.push({
@@ -2242,6 +2584,7 @@
             const props = data.props || [], weedList = data.weeds || [], moundList = data.mounds || [];
             const fenceList = data.fences || [], cropList = data.crops || [], planetList = data.planets || [];
             const berryList = data.berries || [];
+            const wildgrassList = data.wildgrass || [];
             const creatureList = data.creatures;
 
             planetList.forEach((pd, i) => {
@@ -2249,6 +2592,7 @@
                 planets[i].userData.stage = Math.max(0, Math.min(MAX_STAGE, pd.stage ?? 0));
                 planets[i].userData.pending = pd.pending || null;
                 planets[i].userData.maturedHere = pd.maturedHere || 0;
+                planets[i].userData.hasPond = false;   // rebuilt by updatePonds() from stage
                 if (planets[i].userData.late) {
                     planets[i].userData.discovered = !!pd.discovered;
                     planets[i].userData.seeded = !!pd.seeded;
@@ -2316,6 +2660,10 @@
                 const b = spawnBerry(planet, new THREE.Vector3(bd.pos.x, bd.pos.y, bd.pos.z));
                 b.scale.set(1,1,1); b.userData.popping = false;
             });
+            wildgrassList.forEach(wd => {
+                const planet = planets[wd.planetIdx]; if (!planet) return;
+                spawnWildGrass(planet, new THREE.Vector3(wd.pos.x, wd.pos.y, wd.pos.z));
+            });
 
             cropList.forEach(cd => {
                 if (!cd || !CROP_DEFS[cd.cropId]) return;           // unknown crop from an older build
@@ -2344,7 +2692,7 @@
             if (typeof gameState.inventory.crystal !== 'number') gameState.inventory.crystal = 0;
             if (typeof gameState.inventory.berries !== 'number') gameState.inventory.berries = 0;
             gameState.pendingSale = data.pendingSale || {};
-            if (data.tools) gameState.tools = Object.assign({ shears: false }, data.tools);
+            if (data.tools) gameState.tools = Object.assign({ shears: false, rod: false }, data.tools);
             gameState.storage = data.storage || {};
             gameState.staminaUpgrades = data.staminaUpgrades || 0;
             if (data.selectedCrop && CROP_DEFS[data.selectedCrop]) selectCrop(data.selectedCrop);
@@ -2550,11 +2898,11 @@
         function clearWorldObjects() {
             for (let i = interactables.length - 1; i >= 0; i--) {
                 const t = interactables[i].userData.type;
-                if (t === 'bed' || t === 'bin' || t === 'shop' || t === 'chest') continue;   // permanent fixtures
+                if (t === 'bed' || t === 'bin' || t === 'shop' || t === 'chest' || t === 'pond') continue;   // permanent fixtures
                 scene.remove(interactables[i]);
                 interactables.splice(i, 1);
             }
-            weeds.length = 0; crops.length = 0; berries.length = 0;
+            weeds.length = 0; crops.length = 0; berries.length = 0; wildGrass.length = 0;   // ponds are fixtures, kept
             creatures.forEach(c => scene.remove(c)); creatures.length = 0; carriedSheep = null;
         }
 
@@ -2595,6 +2943,14 @@
             if (msg.tool === 'buy') { storeBuy(msg.item); return; }
             if (msg.tool === 'buytool') { storeBuyTool(msg.item); return; }
             if (msg.tool === 'sellmat') { sellMaterial(msg.item, msg.all); return; }
+            if (msg.tool === 'feed') { feedFlock(); return; }
+            if (msg.tool === 'fishcatch') {
+                if (!GOODS[msg.fishId]) return;
+                gameState.inventory.produce[msg.fishId] = (gameState.inventory.produce[msg.fishId] || 0) + 1;
+                playSFX('pop'); updateInventory();
+                broadcastWorldSync();
+                return;
+            }
             if (msg.tool === 'plow') {
                 const p = planets[msg.planetIdx]; if (!p) return;
                 doPlow(p, new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), new THREE.Vector3(msg.norm.x, msg.norm.y, msg.norm.z), false);
@@ -2721,7 +3077,13 @@
                 else flashStatus('Use ✋ to lift, ✂️ to shear.');
                 return true;
             }
+            if (type === 'wildgrass') { cutWildGrass(obj); return true; }   // local pickup, synced next snapshot
             if (type === 'berry') { eatBerry(obj); return true; }   // local pickup, synced next snapshot
+            if (type === 'pond') {
+                // The minigame runs locally on the guest's own screen; only a successful catch
+                // is reported to the host, via finishFishing()'s isGuest() branch.
+                fishPond(obj); return true;
+            }
             if (type === 'chest') { openStorage(); return true; }
             if (type === 'shop') { openStore(); return true; }
             if (type === 'bed') { flashStatus('Only the farm owner can sleep here.'); return true; }
@@ -2882,13 +3244,14 @@
             const tonicInfo = document.getElementById('tonic-info');
             if (tonicBtn) tonicBtn.innerText = `Buy ${tonicPrice()}c`;
             if (tonicInfo) tonicInfo.innerHTML = `<span class="bag-worth">+${TONIC_BONUS} max energy (owned ${gameState.staminaUpgrades || 0})</span>`;
-            const shearBtn = document.getElementById('buy-shears');
-            if (shearBtn) {
-                const owned = toolOwned('shears');
-                shearBtn.innerText = owned ? 'Owned' : 'Buy 500c';
-                shearBtn.disabled = owned;
-                shearBtn.style.opacity = owned ? '0.5' : '1';
-            }
+            Object.keys(TOOL_SHOP).forEach(t => {
+                const btn = document.getElementById('buy-' + t);
+                if (!btn) return;
+                const owned = toolOwned(t);
+                btn.innerText = owned ? 'Owned' : `Buy ${TOOL_SHOP[t].price}c`;
+                btn.disabled = owned;
+                btn.style.opacity = owned ? '0.5' : '1';
+            });
             // Materials you're carrying, with buy-back buttons
             const matEl = document.getElementById('store-materials');
             if (matEl) {
@@ -2935,9 +3298,6 @@
             gameState.money -= price;
             gameState.staminaUpgrades = (gameState.staminaUpgrades || 0) + 1;
             recomputeLevel(false);
-        applySeasonMusic();
-        // First launch: open the guide automatically. Never again after that.
-        try { if (!localStorage.getItem('galaxyFarmSeenTutorial')) setTimeout(() => openTutorial(), 400); } catch (e) {}
             gameState.stamina.current = Math.min(gameState.stamina.max, gameState.stamina.current + TONIC_BONUS);
             playSFX('pop'); updateInventory(); refreshStorePanel();
             storeStatus(`Max energy is now ${gameState.stamina.max}!`);
@@ -3537,10 +3897,14 @@
 
                 if (isGuest()) { handleGuestAction(obj, type); return; }
 
-                if (type === 'sheep') {
+                if (type === 'pond') {
+                    fishPond(obj);
+                } else if (type === 'sheep') {
                     if (window.activeTool === 'shears') shearSheep(obj);
                     else if (window.activeTool === 'hand') pickUpSheep(obj);
                     else flashStatus('Use ✋ to lift, ✂️ to shear.');
+                } else if (type === 'wildgrass') {
+                    cutWildGrass(obj);
                 } else if (type === 'berry') {
                     eatBerry(obj);
                 } else if (type === 'bed') {
@@ -3598,7 +3962,7 @@
                     broadcastWorldSync();
                 } else if (window.activeTool === 'hammer') {
                     // permanent fixtures must never be destroyable
-                    if (type === 'bed' || type === 'bin' || type === 'shop' || type === 'chest' || type === 'sheep') { flashStatus("You can't break that!"); return; }
+                    if (type === 'bed' || type === 'bin' || type === 'shop' || type === 'chest' || type === 'sheep' || type === 'pond') { flashStatus("You can't break that!"); return; }
                     if (type === 'fence') gameState.inventory.wood++;
 
                     if (type === 'mound' && obj.userData.cropRef) {
@@ -3739,10 +4103,14 @@
         }
         recomputeLevel(false);
         revealNewWorlds();
+        updatePonds();
+        applySeasonMusic();
         rebuildCropBar();
         refreshToolLocks();
         refreshSpinButton();
         updateTerraformHUD();
+        // First launch only: open the guide automatically.
+        try { if (!localStorage.getItem('galaxyFarmSeenTutorial')) setTimeout(() => openTutorial(), 400); } catch (e) {}
         updateInventory();
 
         let framesRendered = 0, animErrorLogged = false, nightWarned = false;
@@ -3886,12 +4254,21 @@
                 if (s.userData.planet === currentPlanet && Math.random() > 0.9998) { playSFX('baaa'); showBaaaBubble(s.position); }
             });
 
+            ponds.forEach(pd => {
+                pd.userData.phase += 0.03;
+                const w = pd.userData.water;
+                if (w && w.material) {
+                    w.material.color.setRGB(0.20, 0.58 + Math.sin(pd.userData.phase) * 0.05, 0.84);
+                    w.material.opacity = 0.86 + Math.sin(pd.userData.phase * 1.3) * 0.06;
+                }
+            });
             berries.forEach(b => {
                 b.userData.phase += 0.06;
                 const k = 1 + Math.sin(b.userData.phase) * 0.12;
                 if (!b.userData.popping) b.scale.set(k, k, k);
             });
             weeds.forEach(w => { w.userData.phase += 0.05; const s = 1 + Math.sin(w.userData.phase) * 0.1; w.scale.set(s,s,s); });
+            wildGrass.forEach(w => { w.userData.phase += 0.035; const s = 1 + Math.sin(w.userData.phase) * 0.09; w.scale.set(s,s,s); });
 
             crops.forEach(c => {
                 if (c.userData.popping) return;
@@ -3909,6 +4286,7 @@
             remotePlayers.forEach(rp => { rp.mesh.position.lerp(rp.targetPos, 0.25); rp.mesh.quaternion.slerp(rp.targetQuat, 0.25); });
             if ((isHost || isGuest()) && performance.now() - lastMoveSent > 100) { lastMoveSent = performance.now(); sendMovement(); }
             if (isHost && performance.now() - lastSheepSync > 600) { lastSheepSync = performance.now(); sendSheepSync(); }
+            updateFishingGame();
             if (isGuest() && gameState.stamina.current < gameState.stamina.max) {
                 gameState.stamina.current = Math.min(gameState.stamina.max, gameState.stamina.current + 0.05);
                 if (Math.random() < 0.02) updateInventory();
