@@ -263,6 +263,7 @@
         <div class="tool" id="tool-fence" onclick="selectTool('fence')">🚧</div>
         <div class="tool" id="tool-shears" onclick="selectTool('shears')">✂️</div>
         <div class="tool" id="tool-rod" onclick="selectTool('rod')">🎣</div>
+        <div class="tool" id="tool-brush" onclick="selectTool('brush')">🖌️</div>
     </div>
     <div id="crop-bar"></div>
 
@@ -271,9 +272,11 @@
         <div id="store-produce">No produce to sell.</div>
         <button class="mp-btn" onclick="storeSellAll()">Sell produce now (90%)</button>
         <div class="store-row"><span>🧪 Energy Tonic <span id="tonic-info"></span></span><button class="mp-btn mp-small" id="buy-tonic" onclick="buyTonic()">Buy</button></div>
+        <div class="store-row"><span>🪣 Bigger Can <span id="can-info"></span></span><button class="mp-btn mp-small" id="buy-can" onclick="buyCanUpgrade()">Buy</button></div>
         <div class="mp-or">— tools —</div>
         <div class="store-row"><span>✂️ Shears</span><button class="mp-btn mp-small" id="buy-shears" onclick="storeBuyTool('shears')">Buy 500c</button></div>
         <div class="store-row"><span>🎣 Fishing Rod</span><button class="mp-btn mp-small" id="buy-rod" onclick="storeBuyTool('rod')">Buy 350c</button></div>
+        <div class="store-row"><span>🖌️ Brush</span><button class="mp-btn mp-small" id="buy-brush" onclick="storeBuyTool('brush')">Buy 300c</button></div>
         <div class="mp-or">— sell gathered materials —</div>
         <div id="store-materials"></div>
         <div class="mp-or">— supplies —</div>
@@ -473,7 +476,8 @@
         let worldTime = 0;
         const DAY_CYCLE_SPEED = 0.00015; // full sun/moon arc ~12 real minutes — purely atmospheric now.
                                           // the game day itself only advances when the player sleeps.
-        const interactDistance = 6; 
+        const interactDistance = 6;
+        const WATER_CAN_MAX = 15;   // charges per fill; refill by tapping a pond with the water tool
         window.activeTool = 'plow';
         const planets = [], activeAnims = [], interactables = [], creatures = [], weeds = [], crops = [];
         let camPitch = 0.2, camZoom = 18, initialPinchDist = null;
@@ -508,9 +512,11 @@
             pumpkin:   { name: 'Pumpkin',   icon: '🎃', color: 0xff8c00, growDays: 6, regrowDays: 0, seedCost: 60,  sellPrice: 200, seasons: ['fall'] },
             icemelon:  { name: 'Ice Melon', icon: '🍈', color: 0xa8e6ff, growDays: 5, regrowDays: 0, seedCost: 45,  sellPrice: 130, seasons: ['winter'] },
             starfruit: { name: 'Starfruit', icon: '⭐', color: 0xffd700, growDays: 8, regrowDays: 0, seedCost: 150, sellPrice: 650, seasons: ALL_SEASONS },
+            appletree: { name: 'Apple Tree', icon: '🍎', color: 0xd32f2f, growDays: 10, regrowDays: 4, seedCost: 120, sellPrice: 140, seasons: ALL_SEASONS },
+            citrustree:{ name: 'Orange Tree', icon: '🍊', color: 0xffa726, growDays: 12, regrowDays: 5, seedCost: 160, sellPrice: 180, seasons: ALL_SEASONS },
             // Grass is grown for animal feed, not for sale. It regrows fast so one patch keeps
             // producing, but it competes with cash crops for plot space — that's the tradeoff.
-            grass:     { name: 'Grass',     icon: '🌿', color: 0x7cb342, growDays: 2, regrowDays: 1, seedCost: 8,   sellPrice: 5,   seasons: ALL_SEASONS, yields: 'fodder' }
+            grass:     { name: 'Grass',     icon: '🌿', color: 0x7cb342, growDays: 2, regrowDays: 1, seedCost: 8,   sellPrice: 5,   seasons: ALL_SEASONS, yields: 'fodder', noWater: true }
         };
         function inSeason(id, day) {
             const d = CROP_DEFS[id];
@@ -520,6 +526,7 @@
         const GOODS = {                                     // non-crop sellables
             wool:     { name: 'Wool',      sellPrice: 90,  icon: '🧶' },
             finewool: { name: 'Fine Wool', sellPrice: 220, icon: '✨' },
+            superwool: { name: 'Super Wool', sellPrice: 480, icon: '⭐' },
             fodder:   { name: 'Fodder',    sellPrice: 5,   icon: '🌾' },
             minnow:   { name: 'Minnow',      sellPrice: 20,  icon: '🐟' },
             starbass: { name: 'Star Bass',   sellPrice: 55,  icon: '🐠' },
@@ -647,15 +654,17 @@
             money: 100,
             level: 1,
             staminaUpgrades: 0,
+            canUpgrades: 0,
             stamina: { current: 60, max: 60 },
+            waterCan: { current: WATER_CAN_MAX, max: WATER_CAN_MAX },   // personal, like stamina — not synced from the host
             inventory: { wood: 10, stone: 5, crystal: 0, berries: 0, produce: {} },
             pendingSale: {},
             selectedCrop: 'turnip',
             storage: {},
-            tools: { shears: false, rod: false }   // absent/true = owned; these must be bought
+            tools: { shears: false, rod: false, brush: false }   // absent/true = owned; these must be bought
         };
 
-        const TOOL_SHOP = { shears: { name: 'Shears', price: 500 }, rod: { name: 'Fishing Rod', price: 350 } };
+        const TOOL_SHOP = { shears: { name: 'Shears', price: 500 }, rod: { name: 'Fishing Rod', price: 350 }, brush: { name: 'Brush', price: 300 } };
         function toolOwned(t) { return gameState.tools[t] !== false; }
 
         function refreshToolLocks() {
@@ -927,16 +936,18 @@
         const WILD_GRASS_CAP = 4;
         const wildGrass = [];
 
+        // A darker, richer green than either a crop sprout or the cultivated grass crop, so
+        // it reads as "found in the wild" rather than "someone planted this."
+        const WILD_GRASS_COLOR = 0x4a7c3f;
+
         function spawnWildGrass(planet, pos) {
             const radius = planet.userData.radius;
-            const tuft = new THREE.Mesh(new THREE.ConeGeometry(radius * 0.035, radius * 0.09, 5),
-                new THREE.MeshToonMaterial({ color: 0x9ccc65 }));
+            const tuft = buildGrassClump(radius * 0.16, WILD_GRASS_COLOR);
             const n = pos.clone().sub(planet.position).normalize();
             tuft.position.copy(planet.position).addScaledVector(n, radius);
             tuft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
-            tuft.userData = { type: 'wildgrass', planet, phase: Math.random() * 6 };
-            tuft.castShadow = true;
-            scene.add(tuft); addOutline(tuft, 0.15); interactables.push(tuft); wildGrass.push(tuft);
+            Object.assign(tuft.userData, { type: 'wildgrass', planet, phase: Math.random() * 6 });
+            scene.add(tuft); interactables.push(tuft); wildGrass.push(tuft);
             return tuft;
         }
 
@@ -1055,6 +1066,7 @@
             if (!rows.length) rows.push('<div class="bag-empty">Your bag is empty.</div>');
             const st = Math.round(gameState.stamina.current);
             rows.push(`<div class="bag-head">⚡ Energy ${st}/${gameState.stamina.max} · ⭐ Level ${gameState.level || 1}</div>`);
+            rows.push(`<div class="bag-head">💧 Water ${gameState.waterCan.current}/${gameState.waterCan.max} — refill at a pond</div>`);
             rows.push(`<div class="bag-head">${currentSeason().icon} ${currentSeason().name}, day ${dayOfSeason()} of ${SEASON_LEN} · Year ${currentYear()}</div>`);
             el.innerHTML = rows.join('');
         }
@@ -1248,6 +1260,54 @@
             return best || new THREE.Vector3(0.3, 0.75, -0.6).normalize();
         }
 
+        // Droplets fly outward from the water's surface and fall back, fading out — the same
+        // frame-based activeAnims style used for pops/destroys elsewhere, just with real
+        // per-frame position integration instead of pure scale changes.
+        function spawnSplashAt(worldPos, up, count, spread) {
+            let t1 = new THREE.Vector3(0, 1, 0).cross(up);
+            if (t1.lengthSq() < 1e-6) t1 = new THREE.Vector3(1, 0, 0).cross(up);
+            t1.normalize();
+            const t2 = up.clone().cross(t1).normalize();
+
+            for (let i = 0; i < count; i++) {
+                const droplet = new THREE.Mesh(new THREE.SphereGeometry(0.055 * spread, 5, 4),
+                    new THREE.MeshBasicMaterial({ color: 0xd6f0ff, transparent: true, opacity: 0.85 }));
+                droplet.position.copy(worldPos);
+                scene.add(droplet);
+                const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+                const outSpeed = (0.05 + Math.random() * 0.04) * spread;
+                const upSpeed = (0.09 + Math.random() * 0.05) * spread;
+                const vel = t1.clone().multiplyScalar(Math.cos(angle) * outSpeed)
+                    .addScaledVector(t2, Math.sin(angle) * outSpeed)
+                    .addScaledVector(up, upSpeed);
+                activeAnims.push({ obj: droplet, time: 0, type: 'droplet', vel, up: up.clone() });
+            }
+        }
+
+        function spawnSplash(pond) {
+            const waterLocalOffset = pond.userData.water.position.clone();
+            const worldOffset = waterLocalOffset.clone().applyQuaternion(pond.quaternion);
+            const waterWorldPos = pond.position.clone().add(worldOffset);
+            spawnSplashAt(waterWorldPos, pond.userData.normal.clone(), 6, 1.0);
+        }
+
+        // A smaller, quicker splash for watering a single plant — the same droplet physics,
+        // just a more modest flourish than dipping a can in a whole pond.
+        function spawnWaterDrops(crop) {
+            const planet = crop.userData.moundRef ? crop.userData.moundRef.userData.planet : null;
+            const up = planet ? crop.position.clone().sub(planet.position).normalize() : new THREE.Vector3(0, 1, 0);
+            spawnSplashAt(crop.position.clone(), up, 4, 0.55);
+        }
+
+        function refillWaterCan(pond) {
+            if (gameState.waterCan.current >= gameState.waterCan.max) { flashStatus('Watering can is already full.'); return; }
+            gameState.waterCan.current = gameState.waterCan.max;
+            spawnSplash(pond);
+            playSFX('pop');
+            flashStatus('Refilled the watering can! 💧');
+            updateInventory();
+        }
+
         function updatePonds() {
             planets.forEach(p => {
                 if (!isTerraformable(p) || p.userData.stage < 3 || p.userData.hasPond) return;
@@ -1259,6 +1319,7 @@
 
         // --- SHEEP ---
         const WOOL_DAYS = 3;         // days of being penned before wool is ready
+        const BRUSH_STREAK_NEEDED = 3;   // consecutive days brushing a woolly sheep, for Super Wool
         const PEN_RADIUS = 7;        // how close fences must be to count
         const PEN_FENCES = 5;        // minimum fences nearby
         const PEN_SECTORS = 8;       // directions around the sheep we sample
@@ -1279,7 +1340,8 @@
                 type: 'sheep', planet: p, offset: off, jumpTime: Math.random()*10, e1, e2, body,
                 penned: !!(state && state.penned), woolDays: (state && state.woolDays) || 0,
                 hasWool: !!(state && state.hasWool), fineWool: !!(state && state.fineWool),
-                fedCount: (state && state.fedCount) || 0, fedToday: !!(state && state.fedToday)
+                fedCount: (state && state.fedCount) || 0, fedToday: !!(state && state.fedToday),
+                brushStreak: (state && state.brushStreak) || 0, brushedToday: !!(state && state.brushedToday)
             };
             scene.add(sheep); creatures.push(sheep); interactables.push(sheep);
             updateSheepLook(sheep);
@@ -1376,8 +1438,10 @@
         function updateSheepLook(s) {
             const woolly = s.userData.hasWool;
             const fine = woolly && s.userData.fineWool;
-            s.userData.body.material.color.set(fine ? 0xfff3c4 : (woolly ? 0xffffff : 0xd9d2c5));
-            s.userData.body.scale.setScalar(woolly ? (fine ? 1.06 : 1.0) : 0.82);
+            const super_ = woolly && (s.userData.brushStreak || 0) >= BRUSH_STREAK_NEEDED;
+            const color = super_ ? 0xffd54a : (fine ? 0xfff3c4 : (woolly ? 0xffffff : 0xd9d2c5));
+            s.userData.body.material.color.set(color);
+            s.userData.body.scale.setScalar(woolly ? (super_ ? 1.1 : (fine ? 1.06 : 1.0)) : 0.82);
         }
 
         function fencesNear(pos, planet) {
@@ -1479,13 +1543,15 @@
                 flashStatus(left > 0 ? `Wool ready in ${left} more penned day${left>1?'s':''}.` : 'No wool yet.');
                 return;
             }
-            const kind = s.userData.fineWool ? 'finewool' : 'wool';
+            const kind = (s.userData.brushStreak || 0) >= BRUSH_STREAK_NEEDED ? 'superwool'
+                       : (s.userData.fineWool ? 'finewool' : 'wool');
             s.userData.hasWool = false; s.userData.woolDays = 0;
             s.userData.fineWool = false; s.userData.fedCount = 0;
+            s.userData.brushStreak = 0; s.userData.brushedToday = false;
             updateSheepLook(s);
             gameState.inventory.produce[kind] = (gameState.inventory.produce[kind] || 0) + 1;
             playSFX('pop');
-            flashStatus(kind === 'finewool' ? 'Sheared ✨ Fine Wool!' : 'Sheared 1 wool!');
+            flashStatus(kind === 'superwool' ? 'Sheared ⭐ Super Wool!' : kind === 'finewool' ? 'Sheared ✨ Fine Wool!' : 'Sheared 1 wool!');
             updateInventory(); broadcastWorldSync();
         }
 
@@ -1514,9 +1580,16 @@
         function growWool() {
             creatures.forEach(s => {
                 updatePenned(s);
-                const wasFed = s.userData.fedToday;
                 s.userData.fedToday = false;                          // a new day, a new meal
-                if (!s.userData.penned || s.userData.hasWool) return;  // outside a pen: progress holds
+                if (s.userData.hasWool) {
+                    // Already grown, waiting to be sheared — track the brushing streak. A
+                    // missed day (whatever the reason) breaks it; this is a genuine "in a
+                    // row" streak, unlike wool GROWTH progress, which only pauses.
+                    if (!s.userData.brushedToday) s.userData.brushStreak = 0;
+                    s.userData.brushedToday = false;
+                    return;
+                }
+                if (!s.userData.penned) return;  // outside a pen: growth progress holds, never resets
                 s.userData.woolDays++;
                 if (s.userData.woolDays >= WOOL_DAYS) {
                     s.userData.hasWool = true;
@@ -1525,6 +1598,24 @@
                     updateSheepLook(s);
                 }
             });
+        }
+
+        function brushSheep(s) {
+            if (!s.userData.penned) {
+                const near = fencesNear(s.position, s.userData.planet).length;
+                flashStatus(`Not penned — ${near}/${PEN_FENCES} fences within reach.`);
+                return;
+            }
+            if (!s.userData.hasWool) { flashStatus('Nothing to brush yet — no wool grown.'); return; }
+            if (s.userData.brushedToday) { flashStatus('Already brushed today.'); return; }
+            s.userData.brushedToday = true;
+            s.userData.brushStreak = (s.userData.brushStreak || 0) + 1;
+            playSFX('pop');
+            const streak = s.userData.brushStreak;
+            flashStatus(streak >= BRUSH_STREAK_NEEDED ? 'Fully brushed — shear now for ⭐ Super Wool!' : `Brushed! (${streak}/${BRUSH_STREAK_NEEDED} days)`);
+            updateSheepLook(s);   // in case this brush just crossed the Super Wool threshold
+            updateInventory();
+            broadcastWorldSync();
         }
 
         function spawnDecoration(p) {
@@ -1813,7 +1904,7 @@
 
         // Read and validate the save BEFORE building the world. If it's unreadable we must
         // still generate trees/rocks/weeds, otherwise a bad save leaves totally barren planets.
-        const SAVE_VERSION = 10;
+        const SAVE_VERSION = 12;
         const BOOT_FLAG = 'galaxyFarmBooting';
         let pendingSave = null, saveQuarantined = false;
 
@@ -1933,7 +2024,7 @@
         const controls = { L: {active:false, id:-1, origin:{x:0,y:0}, curr:{x:0,y:0}}, R: {active:false, id:-1, origin:{x:0,y:0}, curr:{x:0,y:0}}, keys: {} };
         window.toggleTools = () => { document.getElementById('tool-list').classList.toggle('open'); };
         window.toggleMP = () => { document.getElementById('mp-panel').classList.toggle('open'); };
-        const TOOL_LABELS = { hand: '✋ HAND', plow: '⛏️ HOE', seed: '🌱 SEED', water: '💧 WATER', hammer: '🔨 HAMMER', fence: '🚧 FENCE', shears: '✂️ SHEARS', rod: '🎣 ROD' };
+        const TOOL_LABELS = { hand: '✋ HAND', plow: '⛏️ HOE', seed: '🌱 SEED', water: '💧 WATER', hammer: '🔨 HAMMER', fence: '🚧 FENCE', shears: '✂️ SHEARS', rod: '🎣 ROD', brush: '🖌️ BRUSH' };
         function toolLabel(t) { return TOOL_LABELS[t] || t.toUpperCase(); }
 
         let handSpin = 1;   // +1 = counter-clockwise, -1 = clockwise
@@ -2204,6 +2295,8 @@
             { icon: '🔨',  tool: 'hammer' },
             { icon: '🚧',  tool: 'fence'  },
             { icon: '✂️',  tool: 'shears' },
+            { icon: '🎣',  tool: 'rod'    },
+            { icon: '🖌️',  tool: 'brush'  },
             { icon: '🧺',  act: 'bag'     },
             { icon: '🗺️',  act: 'map'     },
             { icon: '👥',  act: 'social'  },
@@ -2313,25 +2406,169 @@
             pumpStatus();
         }
 
+        // A cluster of thin blades, distinct from the single cone every other crop shares.
+        // Grass looked identical to a sprouting mystery crop before this — same shape, same
+        // pale sprout colour — so it's now the only crop with its own silhouette. `size`
+        // scales the whole clump; `colorHex` is passed explicitly (not read from an outer
+        // const) so this can safely be called during initial planet creation, which runs
+        // before later const declarations like SPROUT_COLOR have executed.
+        function buildGrassClump(size, colorHex) {
+            const mat = new THREE.MeshToonMaterial({ color: colorHex });
+            const group = new THREE.Group();
+            const blades = [
+                { x: -0.55, z:  0.15, rot: -0.4, h: 0.85 },
+                { x:  0.00, z: -0.20, rot:  0.05, h: 1.15 },
+                { x:  0.55, z:  0.10, rot:  0.4,  h: 0.85 }
+            ];
+            blades.forEach(b => {
+                const blade = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.05 * size, 0.55 * size * b.h, 4), mat);
+                blade.position.set(b.x * size, 0.275 * size * b.h, b.z * size);
+                blade.rotation.z = b.rot;
+                blade.castShadow = true;
+                addOutline(blade, 0.15);
+                group.add(blade);
+            });
+            group.userData.bladeMaterial = mat;
+            return group;
+        }
+        function cropMaterial(c) { return c.userData.bladeMaterial || c.material; }
+
+        // Additional silhouettes so every crop family reads at a glance, the same way grass
+        // now does. Each builder returns a Group sharing ONE material across all its parts
+        // (via userData.bladeMaterial), so the existing growth-stage color system keeps
+        // working unmodified — cropMaterial()/updateCropVisual() don't need to know which
+        // shape they're painting.
+        function meshPart(geo, mat) {
+            const m = new THREE.Mesh(geo, mat);
+            m.castShadow = true;
+            addOutline(m, 0.15);
+            return m;
+        }
+
+        // Root vegetables (turnip, carrot, potato): a round bulb with two leaf blades.
+        function buildRootVeg(size, colorHex) {
+            const mat = new THREE.MeshToonMaterial({ color: colorHex });
+            const group = new THREE.Group();
+            const bulb = meshPart(new THREE.SphereGeometry(0.22 * size, 8, 6), mat);
+            bulb.position.y = 0.16 * size;
+            group.add(bulb);
+            [[-0.08, -0.5], [0.08, 0.5]].forEach(([x, rot]) => {
+                const leaf = meshPart(new THREE.ConeGeometry(0.035 * size, 0.32 * size, 4), mat);
+                leaf.position.set(x * size, 0.4 * size, 0);
+                leaf.rotation.z = rot;
+                group.add(leaf);
+            });
+            group.userData.bladeMaterial = mat;
+            return group;
+        }
+
+        // Stalk fruit (tomato): a thin stalk topped with a round fruit.
+        function buildStalkFruit(size, colorHex) {
+            const mat = new THREE.MeshToonMaterial({ color: colorHex });
+            const group = new THREE.Group();
+            const stalk = meshPart(new THREE.CylinderGeometry(0.025 * size, 0.035 * size, 0.55 * size, 5), mat);
+            stalk.position.y = 0.275 * size;
+            const fruit = meshPart(new THREE.SphereGeometry(0.16 * size, 8, 6), mat);
+            fruit.position.y = 0.5 * size;
+            group.add(stalk, fruit);
+            group.userData.bladeMaterial = mat;
+            return group;
+        }
+
+        // Corn: two tall narrow cones bundled together, suggesting husks.
+        function buildHuskStalk(size, colorHex) {
+            const mat = new THREE.MeshToonMaterial({ color: colorHex });
+            const group = new THREE.Group();
+            [[-0.06, 0.9], [0.06, 1.15]].forEach(([x, h]) => {
+                const husk = meshPart(new THREE.ConeGeometry(0.045 * size, 0.7 * size * h, 5), mat);
+                husk.position.set(x * size, 0.35 * size * h, 0);
+                group.add(husk);
+            });
+            group.userData.bladeMaterial = mat;
+            return group;
+        }
+
+        // Round gourd (pumpkin, ice melon): a genuinely round shape rather than a cone.
+        function buildGourd(size, colorHex) {
+            const mat = new THREE.MeshToonMaterial({ color: colorHex });
+            const group = new THREE.Group();
+            const body = meshPart(new THREE.IcosahedronGeometry(0.3 * size, 1), mat);
+            body.position.y = 0.24 * size;
+            group.add(body);
+            group.userData.bladeMaterial = mat;
+            return group;
+        }
+
+        // Starfruit: five blades radiating symmetrically, a small starburst.
+        function buildStarBlossom(size, colorHex) {
+            const mat = new THREE.MeshToonMaterial({ color: colorHex });
+            const group = new THREE.Group();
+            for (let i = 0; i < 5; i++) {
+                const a = (i / 5) * Math.PI * 2;
+                const blade = meshPart(new THREE.ConeGeometry(0.045 * size, 0.5 * size, 4), mat);
+                blade.position.set(Math.cos(a) * 0.12 * size, 0.28 * size, Math.sin(a) * 0.12 * size);
+                blade.rotation.z = Math.cos(a) * 0.5;
+                blade.rotation.x = Math.sin(a) * -0.5;
+                group.add(blade);
+            }
+            group.userData.bladeMaterial = mat;
+            return group;
+        }
+
+        // Fruit trees: a fixed brown trunk (never recolored) plus a canopy that follows the
+        // normal sprout->growing->mature color progression like everything else. Bigger than
+        // other crops, since it's meant to read as an actual tree once mature.
+        function buildFruitTree(size, colorHex) {
+            const canopyMat = new THREE.MeshToonMaterial({ color: colorHex });
+            const trunkMat = new THREE.MeshToonMaterial({ color: 0x6d4c41 });
+            const group = new THREE.Group();
+            const trunk = meshPart(new THREE.CylinderGeometry(0.06 * size, 0.09 * size, 0.5 * size, 6), trunkMat);
+            trunk.position.y = 0.25 * size;
+            const canopy = meshPart(new THREE.IcosahedronGeometry(0.32 * size, 1), canopyMat);
+            canopy.position.y = 0.62 * size;
+            group.add(trunk, canopy);
+            group.userData.bladeMaterial = canopyMat;
+            return group;
+        }
+
+        const CROP_SHAPE_BUILDERS = {
+            grass:     (color) => buildGrassClump(0.65, color),
+            turnip:    (color) => buildRootVeg(1.0, color),
+            carrot:    (color) => buildRootVeg(1.0, color),
+            potato:    (color) => buildRootVeg(1.0, color),
+            tomato:    (color) => buildStalkFruit(1.0, color),
+            corn:      (color) => buildHuskStalk(1.0, color),
+            pumpkin:   (color) => buildGourd(1.15, color),
+            icemelon:  (color) => buildGourd(0.95, color),
+            starfruit: (color) => buildStarBlossom(1.0, color),
+            appletree: (color) => buildFruitTree(1.6, color),
+            citrustree:(color) => buildFruitTree(1.7, color)
+        };
+
         const SPROUT_COLOR = new THREE.Color(0x9ccc65);
         function createCropMesh(cropId) {
-            const def = CROP_DEFS[cropId];
-            const crop = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.55, 6), new THREE.MeshToonMaterial({ color: SPROUT_COLOR.getHex() }));
-            crop.castShadow = true;
-            crop.userData = { type: 'crop', cropId, stage: 0, daysGrown: 0, wateredToday: false, wilted: false, popping: false, moundRef: null };
-            addOutline(crop, 0.15);
+            const builder = CROP_SHAPE_BUILDERS[cropId];
+            let crop;
+            if (builder) {
+                crop = builder(SPROUT_COLOR.getHex());
+            } else {
+                crop = meshPart(new THREE.ConeGeometry(0.28, 0.55, 6), new THREE.MeshToonMaterial({ color: SPROUT_COLOR.getHex() }));
+            }
+            Object.assign(crop.userData, { type: 'crop', cropId, stage: 0, daysGrown: 0, wateredToday: false, wilted: false, popping: false, moundRef: null });
             return crop;
         }
 
         function updateCropVisual(c) {
             const def = CROP_DEFS[c.userData.cropId];
-            if (!def) { c.material.color.set(0x9e9e8a); return; }
-            if (c.userData.dead) { c.material.color.set(0x6b5b4a); return; }   // withered, brown
-            if (c.userData.wilted) { c.material.color.set(0x9e9e8a); return; }
+            const mat = cropMaterial(c);
+            if (!def) { mat.color.set(0x9e9e8a); return; }
+            if (c.userData.dead) { mat.color.set(0x6b5b4a); return; }   // withered, brown
+            if (c.userData.wilted) { mat.color.set(0x9e9e8a); return; }
             const target = new THREE.Color(def.color);
-            if (c.userData.stage === 0) c.material.color.copy(SPROUT_COLOR);
-            else if (c.userData.stage === 1) c.material.color.copy(SPROUT_COLOR).lerp(target, 0.5);
-            else c.material.color.copy(target);
+            if (c.userData.stage === 0) mat.color.copy(SPROUT_COLOR);
+            else if (c.userData.stage === 1) mat.color.copy(SPROUT_COLOR).lerp(target, 0.5);
+            else mat.color.copy(target);
         }
 
         function plantCrop(mound, cropId) {
@@ -2349,14 +2586,18 @@
 
         function waterCrop(c, charge = true) {
             if (c.userData.dead) { flashStatus('This plant has withered — pull it up.'); return; }
+            const def = CROP_DEFS[c.userData.cropId];
+            if (def && def.noWater) { flashStatus('Grass grows on its own — no need to water it!'); return; }
             if (c.userData.wateredToday) { flashStatus('Already watered!'); return; }
-            // a guest already paid their own stamina; don't bill the host as well
+            // a guest already paid their own stamina and water; don't bill the host as well
+            if (charge && gameState.waterCan.current <= 0) { flashStatus('Watering can is empty — refill at a pond!'); return; }
             if (charge && gameState.stamina.current < 2) { flashStatus('Too tired to water!'); return; }
-            if (charge) gameState.stamina.current -= 2;
+            if (charge) { gameState.stamina.current -= 2; gameState.waterCan.current--; }
             c.userData.wateredToday = true;
             c.userData.wilted = false;
             updateCropVisual(c);
             setMoundWet(c.userData.moundRef, true);
+            spawnWaterDrops(c);
             playSFX('pop');
             updateInventory();
             broadcastWorldSync();
@@ -2446,7 +2687,7 @@
                 const def = CROP_DEFS[c.userData.cropId];
                 if (c.userData.dead) { c.userData.wateredToday = false; setMoundWet(c.userData.moundRef, false); return; }
                 if (c.userData.stage < 2) {
-                    if (c.userData.wateredToday) { c.userData.daysGrown++; c.userData.wilted = false; }
+                    if (def.noWater || c.userData.wateredToday) { c.userData.daysGrown++; c.userData.wilted = false; }
                     else if (c.userData.daysGrown > 0) { c.userData.wilted = true; }
                 }
                 c.userData.wateredToday = false;
@@ -2505,9 +2746,9 @@
             const data = {
                 version: SAVE_VERSION,
                 day: gameState.day, money: gameState.money, stamina: gameState.stamina.current,
-                staminaMax: gameState.stamina.max, totalHarvests: gameState.totalHarvests,
+                staminaMax: gameState.stamina.max, waterCan: gameState.waterCan.current, waterCanMax: gameState.waterCan.max, totalHarvests: gameState.totalHarvests,
                 inventory: gameState.inventory, pendingSale: gameState.pendingSale, selectedCrop: gameState.selectedCrop,
-                tools: gameState.tools, storage: gameState.storage, staminaUpgrades: gameState.staminaUpgrades || 0,
+                tools: gameState.tools, storage: gameState.storage, staminaUpgrades: gameState.staminaUpgrades || 0, canUpgrades: gameState.canUpgrades || 0,
                 playerPos: v3(player.position),
                 planets: planets.map(p => ({ stage: p.userData.stage, pending: p.userData.pending, maturedHere: p.userData.maturedHere || 0, discovered: !!p.userData.discovered, seeded: !!p.userData.seeded, hasPond: !!p.userData.hasPond })),
                 props: [], weeds: [], mounds: [], fences: [], crops: [], berries: [], creatures: [], wildgrass: []
@@ -2529,7 +2770,8 @@
                 if (pi < 0) return;
                 data.creatures.push({ planetIdx: pi, offset: v3(sh.userData.offset),
                     penned: !!sh.userData.penned, woolDays: sh.userData.woolDays || 0, hasWool: !!sh.userData.hasWool,
-                    fineWool: !!sh.userData.fineWool, fedCount: sh.userData.fedCount || 0, fedToday: !!sh.userData.fedToday });
+                    fineWool: !!sh.userData.fineWool, fedCount: sh.userData.fedCount || 0, fedToday: !!sh.userData.fedToday,
+                    brushStreak: sh.userData.brushStreak || 0, brushedToday: !!sh.userData.brushedToday });
             });
             crops.forEach(c => {
                 data.crops.push({
@@ -2686,15 +2928,18 @@
             gameState.money = data.money ?? 100;
             gameState.stamina.max = data.staminaMax ?? 100;
             gameState.stamina.current = data.stamina ?? gameState.stamina.max;
+            gameState.waterCan.max = data.waterCanMax ?? WATER_CAN_MAX;
+            gameState.waterCan.current = data.waterCan ?? gameState.waterCan.max;   // old saves start full, not empty
             gameState.totalHarvests = data.totalHarvests ?? 0;
             if (data.inventory) gameState.inventory = data.inventory;
             if (!gameState.inventory.produce) gameState.inventory.produce = {};
             if (typeof gameState.inventory.crystal !== 'number') gameState.inventory.crystal = 0;
             if (typeof gameState.inventory.berries !== 'number') gameState.inventory.berries = 0;
             gameState.pendingSale = data.pendingSale || {};
-            if (data.tools) gameState.tools = Object.assign({ shears: false, rod: false }, data.tools);
+            if (data.tools) gameState.tools = Object.assign({ shears: false, rod: false, brush: false }, data.tools);
             gameState.storage = data.storage || {};
             gameState.staminaUpgrades = data.staminaUpgrades || 0;
+            gameState.canUpgrades = data.canUpgrades || 0;
             if (data.selectedCrop && CROP_DEFS[data.selectedCrop]) selectCrop(data.selectedCrop);
             rebuildWorldObjects(data);
             if (data.playerPos) player.position.set(data.playerPos.x, data.playerPos.y, data.playerPos.z);
@@ -2911,7 +3156,7 @@
             clearWorldObjects();
             gameState.day = data.day; gameState.money = data.money;
             gameState.inventory = data.inventory; gameState.pendingSale = data.pendingSale;
-            // stamina and selectedCrop stay personal to this guest — not overwritten
+            // stamina, waterCan and selectedCrop stay personal to this guest — not overwritten
             rebuildWorldObjects(data);
             updateInventory();
             netWorldInitialized = true;
@@ -2980,6 +3225,11 @@
                 const sh = (typeof msg.sheep === 'number') ? creatures[msg.sheep]
                          : findNearestOfType(new THREE.Vector3(msg.pos.x, msg.pos.y, msg.pos.z), 'sheep', 1.5);
                 if (sh) shearSheep(sh);
+                return;
+            }
+            if (msg.tool === 'brush') {
+                const sh = creatures[msg.sheep];
+                if (sh) brushSheep(sh);
                 return;
             }
             if (msg.tool === 'hit') {
@@ -3074,14 +3324,19 @@
                     sendMPAction({ tool: 'shear', sheep: creatures.indexOf(obj) });
                     flashStatus(obj.userData.hasWool ? 'Shearing...' : 'That sheep has no wool yet.');
                 } else if (window.activeTool === 'hand') pickUpSheep(obj);
-                else flashStatus('Use ✋ to lift, ✂️ to shear.');
+                else if (window.activeTool === 'brush') {
+                    brushSheep(obj);   // local preview; the host's snapshot reconciles a moment later
+                    sendMPAction({ tool: 'brush', sheep: creatures.indexOf(obj) });
+                }
+                else flashStatus('Use ✋ to lift, ✂️ to shear, 🖌️ to brush.');
                 return true;
             }
             if (type === 'wildgrass') { cutWildGrass(obj); return true; }   // local pickup, synced next snapshot
             if (type === 'berry') { eatBerry(obj); return true; }   // local pickup, synced next snapshot
             if (type === 'pond') {
-                // The minigame runs locally on the guest's own screen; only a successful catch
-                // is reported to the host, via finishFishing()'s isGuest() branch.
+                // Refilling is purely personal state, so it never needs a network round-trip —
+                // unlike a fishing catch, which the minigame reports to the host on success.
+                if (window.activeTool === 'water') { refillWaterCan(obj); return true; }
                 fishPond(obj); return true;
             }
             if (type === 'chest') { openStorage(); return true; }
@@ -3094,11 +3349,15 @@
                 return true;
             }
             if (type === 'crop' && window.activeTool === 'water') {
+                const wDef = CROP_DEFS[obj.userData.cropId];
+                if (wDef && wDef.noWater) { flashStatus('Grass grows on its own — no need to water it!'); return true; }
+                if (gameState.waterCan.current <= 0) { flashStatus('Watering can is empty — refill at a pond!'); return true; }
                 if (gameState.stamina.current < 2) { flashStatus('Too tired to water!'); return true; }
-                gameState.stamina.current -= 2; updateInventory();
+                gameState.stamina.current -= 2; gameState.waterCan.current--; updateInventory();
                 // Show the change straight away; the host's snapshot confirms it a moment later.
                 obj.userData.wateredToday = true; updateCropVisual(obj);
                 setMoundWet(obj.userData.moundRef, true);
+                spawnWaterDrops(obj);
                 flashStatus('Watered.');
                 sendMPAction({ tool: 'water', pos: v3(obj.position) }); return true;
             }
@@ -3106,10 +3365,14 @@
             if (window.activeTool === 'water' && type === 'mound' && obj.userData.hasCrop) {
                 const ref = obj.userData.cropRef;
                 const mature = ref.userData.stage === 2;
+                const mDef = CROP_DEFS[ref.userData.cropId];
+                if (!mature && mDef && mDef.noWater) { flashStatus('Grass grows on its own — no need to water it!'); return true; }
                 if (!mature) {
+                    if (gameState.waterCan.current <= 0) { flashStatus('Watering can is empty — refill at a pond!'); return true; }
                     if (gameState.stamina.current < 2) { flashStatus('Too tired to water!'); return true; }
-                    gameState.stamina.current -= 2; updateInventory();
+                    gameState.stamina.current -= 2; gameState.waterCan.current--; updateInventory();
                     ref.userData.wateredToday = true; updateCropVisual(ref); setMoundWet(obj, true);
+                    spawnWaterDrops(ref);
                     flashStatus('Watered.');
                 } else {
                     flashStatus('Harvested ' + goodName(ref.userData.cropId) + '!');
@@ -3244,6 +3507,10 @@
             const tonicInfo = document.getElementById('tonic-info');
             if (tonicBtn) tonicBtn.innerText = `Buy ${tonicPrice()}c`;
             if (tonicInfo) tonicInfo.innerHTML = `<span class="bag-worth">+${TONIC_BONUS} max energy (owned ${gameState.staminaUpgrades || 0})</span>`;
+            const canBtn = document.getElementById('buy-can');
+            const canInfo = document.getElementById('can-info');
+            if (canBtn) canBtn.innerText = `Buy ${canUpgradePrice()}c`;
+            if (canInfo) canInfo.innerHTML = `<span class="bag-worth">+${CAN_UPGRADE_BONUS} capacity (owned ${gameState.canUpgrades || 0})</span>`;
             Object.keys(TOOL_SHOP).forEach(t => {
                 const btn = document.getElementById('buy-' + t);
                 if (!btn) return;
@@ -3301,6 +3568,21 @@
             gameState.stamina.current = Math.min(gameState.stamina.max, gameState.stamina.current + TONIC_BONUS);
             playSFX('pop'); updateInventory(); refreshStorePanel();
             storeStatus(`Max energy is now ${gameState.stamina.max}!`);
+            saveGame(); broadcastWorldSync();
+        };
+
+        const CAN_UPGRADE_BONUS = 5;
+        function canUpgradePrice() { return 400 + (gameState.canUpgrades || 0) * 300; }
+        window.buyCanUpgrade = () => {
+            if (isGuest()) { storeStatus('Only the farm owner can buy upgrades.'); return; }
+            const price = canUpgradePrice();
+            if (gameState.money < price) { storeStatus(`Need ${price}c.`); return; }
+            gameState.money -= price;
+            gameState.canUpgrades = (gameState.canUpgrades || 0) + 1;
+            gameState.waterCan.max += CAN_UPGRADE_BONUS;
+            gameState.waterCan.current = Math.min(gameState.waterCan.max, gameState.waterCan.current + CAN_UPGRADE_BONUS);
+            playSFX('pop'); updateInventory(); refreshStorePanel();
+            storeStatus(`Watering can now holds ${gameState.waterCan.max}!`);
             saveGame(); broadcastWorldSync();
         };
 
@@ -3898,11 +4180,13 @@
                 if (isGuest()) { handleGuestAction(obj, type); return; }
 
                 if (type === 'pond') {
-                    fishPond(obj);
+                    if (window.activeTool === 'water') refillWaterCan(obj);
+                    else fishPond(obj);
                 } else if (type === 'sheep') {
                     if (window.activeTool === 'shears') shearSheep(obj);
                     else if (window.activeTool === 'hand') pickUpSheep(obj);
-                    else flashStatus('Use ✋ to lift, ✂️ to shear.');
+                    else if (window.activeTool === 'brush') brushSheep(obj);
+                    else flashStatus('Use ✋ to lift, ✂️ to shear, 🖌️ to brush.');
                 } else if (type === 'wildgrass') {
                     cutWildGrass(obj);
                 } else if (type === 'berry') {
@@ -4233,6 +4517,13 @@
                     const s = a.baseScale * (1 + b * 0.25);
                     a.obj.scale.set(s, s, s);
                     if (a.time > 0.4) { a.obj.scale.set(a.baseScale, a.baseScale, a.baseScale); activeAnims.splice(i,1); }
+                } else if (a.type === 'droplet') {
+                    a.vel.addScaledVector(a.up, -0.006);       // gravity pulls back toward the water
+                    a.obj.position.add(a.vel);
+                    const fade = Math.max(0, 1 - a.time / 1.8);
+                    a.obj.scale.setScalar(fade);
+                    if (a.obj.material) a.obj.material.opacity = fade * 0.85;
+                    if (a.time > 1.8) { scene.remove(a.obj); activeAnims.splice(i, 1); }
                 }
             });
 
